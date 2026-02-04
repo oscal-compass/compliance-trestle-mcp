@@ -152,3 +152,6 @@ assessment-plans/
 assessment-results/
 plan-of-action-and-milestones/
 target-definitions/
+
+.roo
+.vscode/launch.json

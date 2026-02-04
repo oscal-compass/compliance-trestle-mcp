@@ -47,9 +47,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/trestle-mcp"
-Repository = "https://github.com/yourusername/trestle-mcp.git"
-Issues = "https://github.com/yourusername/trestle-mcp/issues"
+Homepage = "https://github.com/oscal-compass/proposal-20260204"
+Repository = "https://github.com/oscal-compass/proposal-20260204.git"
+Issues = "https://github.com/oscal-compass/proposal-20260204/issues"
 
 [project.scripts]
 trestle-mcp = "trestle_mcp.main:main"

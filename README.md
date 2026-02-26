@@ -1,6 +1,4 @@
----
-mcp-name: io.github.oscal-compass/compliance-trestle-mcp
----
+<!-- mcp-name: io.github.oscal-compass/compliance-trestle-mcp -->
 
 # Trestle MCP
 

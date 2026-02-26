@@ -11,15 +11,24 @@ name: publish
 
 on:
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment (test or production)'
+        required: true
+        type: choice
+        options:
+          - test
+          - production
+        default: test
 
 jobs:
   publish-to-pypi:
-    name: Publish to PyPI
+    name: Publish to ${{ inputs.environment == 'test' && 'Test PyPI' || 'PyPI' }}
     runs-on: ubuntu-latest
 
     environment:
-      name: pypi
-      url: https://test.pypi.org/p/compliance-trestle-mcp
+      name: ${{ inputs.environment == 'test' && 'test-pypi' || 'pypi' }}
+      url: ${{ inputs.environment == 'test' && 'https://test.pypi.org/p/compliance-trestle-mcp' || 'https://pypi.org/p/compliance-trestle-mcp' }}
 
     permissions:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
@@ -39,7 +48,7 @@ jobs:
           pip install build
       - name: Build package
         run: python -m build
-      - name: Publish distribution 📦 to PyPI
+      - name: Publish distribution 📦 to ${{ inputs.environment == 'test' && 'Test PyPI' || 'PyPI' }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          repository-url: https://test.pypi.org/legacy/
+          repository-url: ${{ inputs.environment == 'test' && 'https://test.pypi.org/legacy/' || '' }}

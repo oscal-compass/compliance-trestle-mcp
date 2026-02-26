@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.oscal-compass/compliance-trestle-mcp",
+  "description": "An MCP server that provides tools to author OSCAL security compliance documentation",
+  "repository": {
+    "url": "https://github.com/oscal-compass/compliance-trestle-mcp",
+    "source": "github"
+  },
+  "version": "0.1.2",
+  "websiteUrl": "https://oscal-compass.dev/compliance-trestle/latest",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "compliance-trestle-mcp",
+      "version": "0.1.2",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

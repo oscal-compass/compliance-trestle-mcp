@@ -4,14 +4,6 @@ MCP server to easily use [compliance-trestle](https://github.com/oscal-compass/c
 
 ## Getting Started
 
-1. Prerequisite
-    - Install [uvx](https://docs.astral.sh/uv/getting-started/installation/)
-
-2. Clone the repository
-    ```
-    git clone https://github.com/oscal-compass/proposal-20260204.git
-    ```
-
 This project can be used in the following two ways:
 
 - **[Usage from Coding Agent (Roo Code)](#usage-from-roocode)**: Use Trestle-MCP from Roo Code via MCP.
@@ -28,7 +20,7 @@ Choose the option that best fits your workflow.
         "mcpServers": {
             "trestle": {
                 "command": "uvx",
-                "args": ["--from", "./trestle-mcp-tmp", "trestle-mcp"]
+                "args": ["--from", "compliance-trestle-mcp", "trestle-mcp"]
             }
         }
     }

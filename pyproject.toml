@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "trestle-mcp"
+name = "compliance-trestle-mcp"
 version = "0.1.0"
 description = "MCP server for compliance-trestle OSCAL framework"
 readme = "README.md"
@@ -47,9 +47,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/oscal-compass/proposal-20260204"
-Repository = "https://github.com/oscal-compass/proposal-20260204.git"
-Issues = "https://github.com/oscal-compass/proposal-20260204/issues"
+Homepage = "https://github.com/oscal-compass/compliance-trestle-mcp"
+Repository = "https://github.com/oscal-compass/compliance-trestle-mcp.git"
+Issues = "https://github.com/oscal-compass/compliance-trestle-mcp/issues"
 
 [project.scripts]
 trestle-mcp = "trestle_mcp.main:main"
@@ -89,3 +89,6 @@ ignore = [
     "E722",
     "F401",
 ]
+
+[tool.hatch.build.targets.wheel]
+packages = ["trestle_mcp"]

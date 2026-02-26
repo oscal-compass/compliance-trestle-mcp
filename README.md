@@ -1,3 +1,7 @@
+---
+mcp-name: io.github.oscal-compass/compliance-trestle-mcp
+---
+
 # Trestle MCP
 
 MCP server to easily use [compliance-trestle](https://github.com/oscal-compass/compliance-trestle) (OSCAL tool) from Claude, Roo, or any MCP-compliant client.

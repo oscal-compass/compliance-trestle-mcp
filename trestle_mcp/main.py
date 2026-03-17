@@ -115,6 +115,23 @@ async def trestle_author_profile_assemble(
     )
 
 
+@mcp.tool(
+    name="trestle_task_csv_to_oscal_cd",
+    title="Convert CSV to OSCAL Component Definition",
+    description=services.task.csv_to_oscal_cd.trestle_task_csv_to_oscal_cd.__doc__,
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+        "openWorldHint": False,
+    },
+)
+async def trestle_task_csv_to_oscal_cd(
+    params: services.task.csv_to_oscal_cd.TrestleTaskCsvToOscalCdInput,
+) -> str:
+    return await services.task.csv_to_oscal_cd.trestle_task_csv_to_oscal_cd(params)
+
+
 def main():
     """Main entry point for the trestle MCP server."""
     mcp.run()

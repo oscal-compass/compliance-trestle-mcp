@@ -25,7 +25,9 @@ classifiers = [
 ]
 
 dependencies = [
-    "mcp>=1.0.0",
+    # Upper-bound: mcp 2.0.0 removed the bundled `mcp.server.fastmcp` module this server imports;
+    # lower-bound: FastMCP.tool(title=...) (used below) is only supported from mcp 1.10.0.
+    "mcp>=1.10.0,<2.0.0",
     "pydantic>=2.0.0",
     "compliance-trestle>=3.11.0",
     "ruamel.yaml>=0.19.0"

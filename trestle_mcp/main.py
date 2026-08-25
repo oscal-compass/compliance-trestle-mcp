@@ -133,6 +133,25 @@ async def trestle_task_csv_to_oscal_cd(
 
 
 @mcp.tool(
+    name="trestle_task_xlsx_to_oscal_poam",
+    title="Convert FedRAMP XLSX to OSCAL POA&M",
+    description=services.task.xlsx_to_oscal_poam.trestle_task_xlsx_to_oscal_poam.__doc__,
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+        "openWorldHint": False,
+    },
+)
+async def trestle_task_xlsx_to_oscal_poam(
+    params: services.task.xlsx_to_oscal_poam.TrestleTaskXlsxToOscalPoamInput,
+) -> str:
+    return await services.task.xlsx_to_oscal_poam.trestle_task_xlsx_to_oscal_poam(
+        params
+    )
+
+
+@mcp.tool(
     name="trestle_validate",
     title="Validate OSCAL Document",
     description=services.validate.trestle_validate.__doc__,

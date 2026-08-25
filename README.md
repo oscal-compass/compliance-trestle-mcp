@@ -121,6 +121,7 @@ assessment-results  component-definitions  profiles
 - `trestle_author_profile_resolve`: Resolve profile to catalog
 - `trestle_author_profile_assemble`: Assemble markdown controls into profile JSON
 - `trestle_task_csv_to_oscal_cd`: Convert a CSV mapping file into an OSCAL component definition
+- `trestle_task_xlsx_to_oscal_poam`: Convert a FedRAMP-format XLSX spreadsheet into an OSCAL Plan of Action and Milestones (POA&M)
 - `trestle_validate`: Validate a standalone OSCAL file (any top-level model, e.g. POA&M) against the OSCAL schema (and trestle's semantic checks)
 
 For advanced use, refer to official [compliance-trestle docs](https://oscal-compass.dev/compliance-trestle/latest/) or [developer documents](docs/command-specs-development.md) in this repo.

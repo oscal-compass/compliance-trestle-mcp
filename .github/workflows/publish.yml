@@ -1,19 +1,23 @@
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-
-# GitHub recommends pinning actions to a commit SHA.
-# To get a newer version, you will need to update the SHA.
-# You can also reference a tag or branch, but the action may change without warning.
+# Publishes an existing GitHub Release's artifacts to PyPI (or Test PyPI).
+#
+# This does NOT build — it downloads the sdist + wheel that the `release`
+# workflow already attached to the given tag's Release and uploads those exact
+# files. That guarantees Test PyPI and production PyPI get identical artifacts.
+#
+# Typical flow: run this with environment=test first, verify on Test PyPI, then
+# run again with the same tag and environment=production.
 
 name: publish
 
 on:
   workflow_dispatch:
     inputs:
+      tag:
+        description: "Release tag to publish (e.g. v0.2.0)"
+        required: true
+        type: string
       environment:
-        description: 'Target environment (test or production)'
+        description: "Target environment (test or production)"
         required: true
         type: choice
         options:
@@ -23,7 +27,7 @@ on:
 
 jobs:
   publish-to-pypi:
-    name: Publish to ${{ inputs.environment == 'test' && 'Test PyPI' || 'PyPI' }}
+    name: Publish ${{ inputs.tag }} to ${{ inputs.environment == 'test' && 'Test PyPI' || 'PyPI' }}
     runs-on: ubuntu-latest
 
     environment:
@@ -31,23 +35,25 @@ jobs:
       url: ${{ inputs.environment == 'test' && 'https://test.pypi.org/p/compliance-trestle-mcp' || 'https://pypi.org/p/compliance-trestle-mcp' }}
 
     permissions:
-      id-token: write  # IMPORTANT: mandatory for trusted publishing
+      id-token: write # IMPORTANT: mandatory for trusted publishing
+      contents: read # required to download the Release assets
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
-      - name: Install dependencies
+
+      - name: Download artifacts from the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          python -m pip install --upgrade pip
-          pip install build
-      - name: Build package
-        run: python -m build
+          mkdir -p dist
+          gh release download "${{ inputs.tag }}" \
+            --dir dist \
+            --pattern "*.whl" \
+            --pattern "*.tar.gz"
+          echo "Downloaded artifacts:"
+          ls -l dist
+
       - name: Publish distribution 📦 to ${{ inputs.environment == 'test' && 'Test PyPI' || 'PyPI' }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:

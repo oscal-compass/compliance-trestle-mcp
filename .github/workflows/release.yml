@@ -1,0 +1,56 @@
+# Builds the distribution and creates a GitHub Release with the artifacts
+# attached. Triggered by pushing a version tag (e.g. v0.2.0).
+#
+# Flow:
+#   1. Bump `version` in pyproject.toml and commit.
+#   2. Tag the commit: `git tag v0.2.0 && git push origin v0.2.0`.
+#   3. This workflow builds, verifies the tag matches pyproject, and publishes
+#      the GitHub Release with the built sdist + wheel attached.
+#
+# Shipping to PyPI is a separate step: run the `publish` workflow with this tag.
+
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    name: Build and create GitHub Release
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write # required to create the GitHub Release
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Verify tag matches pyproject.toml and server.json versions
+        run: python scripts/check_versions.py --expect "${GITHUB_REF_NAME#v}"
+
+      - name: Install build tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install build
+
+      - name: Build package
+        run: python -m build
+
+      - name: Create GitHub Release with artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes \
+            dist/*

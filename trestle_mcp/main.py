@@ -132,6 +132,21 @@ async def trestle_task_csv_to_oscal_cd(
     return await services.task.csv_to_oscal_cd.trestle_task_csv_to_oscal_cd(params)
 
 
+@mcp.tool(
+    name="trestle_validate",
+    title="Validate OSCAL Document",
+    description=services.validate.trestle_validate.__doc__,
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": False,
+    },
+)
+async def trestle_validate(params: services.validate.TrestleValidateInput) -> str:
+    return await services.validate.trestle_validate(params)
+
+
 def main():
     """Main entry point for the trestle MCP server."""
     mcp.run()

@@ -36,8 +36,22 @@ async def call_tool(client: Client, name: str, params: Dict[str, Any]):
     return await client.call_tool(name, {"params": params}, raise_on_error=True)
 
 
+@pytest.fixture
+def restore_cwd():
+    """Restore the working directory after a test that chdirs away.
+
+    Without this the cwd stays inside a deleted TemporaryDirectory and every
+    later test that resolves a relative path fails with FileNotFoundError.
+    """
+    previous = os.getcwd()
+    try:
+        yield
+    finally:
+        os.chdir(previous)
+
+
 @pytest.mark.anyio
-async def test_trestle_catalog_generate_tool():
+async def test_trestle_catalog_generate_tool(restore_cwd):
     with tempfile.TemporaryDirectory() as tmp_workspace:
         # Prepare test catalog.json for import
         import_catalog_path = Path("tests/data/test-catalog.json").absolute().as_posix()

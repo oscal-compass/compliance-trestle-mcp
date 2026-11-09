@@ -38,7 +38,11 @@ def workspace(tmp_path):
     components_csv = (DATA_DIR / "task/csv-to-oscal-cd/components.csv").absolute()
     mapping_csv = (DATA_DIR / "task/csv-to-oscal-mc/mapping.csv").absolute()
 
-    previous = Path.cwd()
+    try:
+        previous = Path.cwd()
+    except FileNotFoundError:
+        # A previous test chdir'd into a directory that has since been removed.
+        previous = tmp_path
     os.chdir(tmp_path)
     try:
         yield {

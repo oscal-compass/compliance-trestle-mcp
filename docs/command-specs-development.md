@@ -153,22 +153,67 @@ Put the test file with the same hierarchy under `tests/unit/services/` using the
 (The example provided remains unchanged from the original tutorial.)
 
 #### Register as MCP Tool
-Add the MCP tool registration code in [`trestle_mcp/main.py`](trestle_mcp/main.py:1):
+Tools are registered from a table, not from decorators. Add a `ToolSpec` row to
+`TOOL_SPECS` in [`trestle_mcp/tools.py`](trestle_mcp/tools.py:1):
+
 ```python
-@mcp.tool(
-    name="trestle_init",
-    title="Initialize Trestle Workspace",
-    description=services.trestle_init.__doc__,
-    annotations={
-        "readOnlyHint": False,
-        "destructiveHint": False,
-        "idempotentHint": True,
-        "openWorldHint": False,
-    },
-)
-async def trestle_init(params: services.TrestleInitInput) -> str:
-    return await services.trestle_init(params)
+    ToolSpec(
+        name="trestle_init",
+        title="Initialize Trestle Workspace",
+        group="core",
+        input_model=services.init.TrestleInitInput,
+        handler=services.init.trestle_init,
+        annotations=_annotations(idempotent=True),
+        presets=_AUTHORING,
+    ),
 ```
+
+- `group` is the structural group and must be one of `core`, `author` or `task`,
+  mirroring the trestle CLI command structure. Put the row in the matching
+  section of the table; registration order follows the table.
+- `handler` is the service function itself. FastMCP derives the input schema
+  from its `params` annotation and the tool description from its docstring, so
+  no wrapper function is needed. `input_model` must match that annotation or
+  registration fails at startup.
+- `presets` decides whether the tool is exposed by default. Only add
+  `_AUTHORING` if the tool is part of the authoring lifecycle a typical caller
+  needs; see below.
+
+#### Think about the context cost before adding a default tool
+Every registered tool's name, input schema and description is loaded into the
+client's context window on every session. Tool count is a cost paid by the
+caller, not a feature. That is why the server implements the full command
+surface but exposes only the `authoring` preset unless the caller opts into
+more with `--tools` / `TRESTLE_MCP_TOOLS`.
+
+So: implementing a command is cheap, and adding it to `authoring` is not. A new
+tool should default to no preset, and join `authoring` only when the authoring
+lifecycle is incomplete without it.
+
+#### Commands deliberately not covered
+These have no tools, and the reasons are worth keeping:
+
+- **Signing and provenance**: `sign`, `verify`, `sign-manifest`,
+  `verify-manifest`, `generate-manifest`, `canonicalize`. `sign` and
+  `sign-manifest` take a path to a PEM private key and the name of an
+  environment variable holding its password; handing key material to a tool an
+  agent invokes on a model's judgement is a different trust decision from
+  editing OSCAL, and should be made deliberately rather than inherited by
+  default. They are also `--beta`-gated in trestle, so their interface is not
+  stable. `canonicalize` is only meaningful alongside them.
+- **`beta`**: manages trestle's own feature flags for a workspace. It changes
+  what other commands do rather than acting on a model.
+- **`author docs`, `author folders`, `author headers`, `author jinja`**:
+  markdown governance for arbitrary document trees, unrelated to OSCAL models.
+  Nothing else in this server operates on non-OSCAL content.
+- **The CLI `trestle validate`**: `trestle_validate` here validates a standalone
+  OSCAL file through the trestle model classes, which also works outside a
+  workspace — see [`trestle_mcp/libs/oscal_validate.py`](trestle_mcp/libs/oscal_validate.py:1).
+  Workspace-wide validation (`trestle validate -a`) is not exposed.
+- **Individual `trestle task` wrappers**: the task set belongs to the installed
+  trestle version and is open-ended, so `trestle_task_run` covers all of them
+  generically. Add a typed wrapper only when a task needs real input validation
+  or format guidance, as `csv-to-oscal-cd` does.
 
 ---
 

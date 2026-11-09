@@ -60,18 +60,28 @@ uvx mcp-cli tools --config-file mcp.json
 Sample output (tools available):
 
 ```
-6 Available Tools
-┌─────────┬─────────────────────────────────┬───────────────────────────────────────────────────────────────────┐
-│ Server  │ Tool                            │ Description                                                       │
-├─────────┼─────────────────────────────────┼───────────────────────────────────────────────────────────────────┤
-│ trestle │ trestle_init                    │ Initialize a trestle working directory.                           │
-│ trestle │ trestle_import                  │ Import an existing OSCAL model into the trestle workspace.        │
-│ trestle │ trestle_author_catalog_generate │ Generate Catalog controls in markdown form from a catalog         │
-│ trestle │ trestle_author_profile_generate │ Generate markdown documentation set for controls defined in profile│
-│ trestle │ trestle_author_profile_resolve  │ Resolve an OSCAL profile to a resolved profile catalog.           │
-│ trestle │ trestle_author_profile_assemble │ Assemble markdown controls into a Profile JSON file.              │
-└─────────┴─────────────────────────────────┴───────────────────────────────────────────────────────────────────┘
+13 Available Tools
+┌─────────┬───────────────────────────────────┬───────────────────────────────────────────────────────────────────┐
+│ Server  │ Tool                              │ Description                                                       │
+├─────────┼───────────────────────────────────┼───────────────────────────────────────────────────────────────────┤
+│ trestle │ trestle_init                      │ Initialize a trestle working directory.                           │
+│ trestle │ trestle_import                    │ Import an existing OSCAL model into the trestle workspace.        │
+│ trestle │ trestle_validate                  │ Validate a standalone OSCAL file against the OSCAL schema.        │
+│ trestle │ trestle_author_catalog_generate   │ Generate Catalog controls in markdown form from a catalog.        │
+│ trestle │ trestle_author_catalog_assemble   │ Assemble markdown files of controls into a Catalog json file.     │
+│ trestle │ trestle_author_profile_generate   │ Generate markdown documentation set for controls in a profile.    │
+│ trestle │ trestle_author_profile_assemble   │ Assemble markdown controls into a Profile JSON file.              │
+│ trestle │ trestle_author_profile_resolve    │ Resolve an OSCAL profile to a resolved profile catalog.           │
+│ trestle │ trestle_author_component_generate │ Generate component markdown from a component-definition.          │
+│ trestle │ trestle_author_component_assemble │ Assemble markdown controls into a component-definition json file. │
+│ trestle │ trestle_task_csv_to_oscal_cd      │ Convert a CSV file to an OSCAL component definition.              │
+│ trestle │ trestle_task_csv_to_oscal_mc      │ Convert a CSV file to an OSCAL mapping collection.                │
+│ trestle │ trestle_task_xlsx_to_oscal_poam   │ Convert a FedRAMP XLSX spreadsheet to an OSCAL POA&M.             │
+└─────────┴───────────────────────────────────┴───────────────────────────────────────────────────────────────────┘
 ```
+
+Those 13 are the default selection. The server implements 28 tools in all — see
+[Choosing which tools are exposed](#choosing-which-tools-are-exposed).
 
 #### Step 3: Execute a Tool (e.g., `trestle_init`)
 
@@ -112,17 +122,132 @@ assessment-results  component-definitions  profiles
 
 ---
 
+## Choosing which tools are exposed
+
+Every tool a server registers costs the caller context: an MCP client loads each
+tool's name, input schema and description into the model's context window on
+every session. This server implements the whole trestle command surface, but
+exposes only the authoring lifecycle unless you ask for more, so the common case
+stays cheap and the rest is one setting away.
+
+The selection is a comma-separated list of group names and/or individual tool
+names, read from the `--tools` flag or the `TRESTLE_MCP_TOOLS` environment
+variable. The flag wins over the environment variable. Naming something that
+does not exist fails at startup with the list of valid names, rather than
+starting up with the tool quietly missing.
+
+| Value | Tools | Meaning |
+|---|---|---|
+| `authoring` | 13 | The curated authoring lifecycle. **The default.** |
+| `core` | 12 | The top-level trestle commands |
+| `author` | 11 | Every `trestle author` subcommand wrapper |
+| `task` | 5 | Every `trestle task` wrapper, including the generic runner |
+| `all` | 28 | Everything |
+| `trestle_author_ssp_generate` | 1 | Any single tool, by its registered name |
+
+`core`, `author` and `task` mirror the trestle CLI's own command structure, so
+which tool is in which group follows from the CLI. `authoring` is the one
+curated preset that cuts across them.
+
+**Default (the authoring lifecycle) — no configuration needed:**
+
+```json
+{
+    "mcpServers": {
+        "trestle": {
+            "command": "uvx",
+            "args": ["--from", "compliance-trestle-mcp", "trestle-mcp"]
+        }
+    }
+}
+```
+
+**Everything, via the environment variable:**
+
+```json
+{
+    "mcpServers": {
+        "trestle": {
+            "command": "uvx",
+            "args": ["--from", "compliance-trestle-mcp", "trestle-mcp"],
+            "env": { "TRESTLE_MCP_TOOLS": "all" }
+        }
+    }
+}
+```
+
+**A mixed selection, via the flag — the authoring lifecycle plus SSP generation
+and the generic task runner:**
+
+```json
+{
+    "mcpServers": {
+        "trestle": {
+            "command": "uvx",
+            "args": [
+                "--from", "compliance-trestle-mcp", "trestle-mcp",
+                "--tools", "authoring,trestle_author_ssp_generate,trestle_task_run"
+            ]
+        }
+    }
+}
+```
+
+Run `trestle-mcp --help` for the group list, and watch stderr on startup for the
+line reporting the selection and how many tools it registered.
+
 ## Tool List & Quick Reference
 
-- `trestle_init`: Initialize a trestle workspace
-- `trestle_import`: Import OSCAL models (Catalog/Profile/etc.) from a file or URL
-- `trestle_author_catalog_generate`: Generate markdown controls from a catalog
-- `trestle_author_profile_generate`: Generate markdown for profiles
-- `trestle_author_profile_resolve`: Resolve profile to catalog
-- `trestle_author_profile_assemble`: Assemble markdown controls into profile JSON
-- `trestle_task_csv_to_oscal_cd`: Convert a CSV mapping file into an OSCAL component definition
-- `trestle_task_xlsx_to_oscal_poam`: Convert a FedRAMP-format XLSX spreadsheet into an OSCAL Plan of Action and Milestones (POA&M)
-- `trestle_validate`: Validate a standalone OSCAL file (any top-level model, e.g. POA&M) against the OSCAL schema (and trestle's semantic checks)
+Tools marked **(default)** are in the `authoring` preset.
+
+### `core` — top-level trestle commands
+
+- `trestle_init` **(default)**: Initialize a trestle workspace
+- `trestle_import` **(default)**: Import OSCAL models (Catalog/Profile/etc.) from a file or URL
+- `trestle_validate` **(default)**: Validate a standalone OSCAL file (any top-level model, e.g. POA&M) against the OSCAL schema (and trestle's semantic checks)
+- `trestle_create`: Create a sample OSCAL model, or a new element inside an existing model file
+- `trestle_assemble`: Assemble a split model into a single file under `dist`
+- `trestle_split`: Split subcomponents of a model into separate files
+- `trestle_merge`: Merge split subcomponents back into a model
+- `trestle_describe`: Describe the contents of a model file, optionally at an element path
+- `trestle_replicate`: Copy a top-level model to a new name, optionally with fresh uuids
+- `trestle_href`: List or repoint the import hrefs of a profile
+- `trestle_partial_object_validate`: Validate a single OSCAL object held in a file
+- `trestle_version`: Report the trestle and OSCAL versions, or a model's OSCAL version
+
+### `author` — `trestle author` subcommands
+
+- `trestle_author_catalog_generate` **(default)**: Generate markdown controls from a catalog
+- `trestle_author_catalog_assemble` **(default)**: Assemble markdown controls back into a catalog JSON
+- `trestle_author_profile_generate` **(default)**: Generate markdown for profiles
+- `trestle_author_profile_assemble` **(default)**: Assemble markdown controls into profile JSON
+- `trestle_author_profile_resolve` **(default)**: Resolve a profile to a catalog
+- `trestle_author_profile_inherit`: Derive a profile from a parent profile and a leveraged SSP
+- `trestle_author_component_generate` **(default)**: Generate markdown from a component definition
+- `trestle_author_component_assemble` **(default)**: Assemble markdown back into a component definition
+- `trestle_author_ssp_generate`: Generate SSP markdown from a profile and component definitions
+- `trestle_author_ssp_assemble`: Assemble SSP markdown into a system-security-plan JSON
+- `trestle_author_ssp_filter`: Filter an SSP by profile, components, implementation status or control origination
+
+### `task` — `trestle task` wrappers
+
+- `trestle_task_csv_to_oscal_cd` **(default)**: Convert a CSV mapping file into an OSCAL component definition
+- `trestle_task_csv_to_oscal_mc` **(default)**: Convert a CSV crosswalk into an OSCAL mapping collection
+- `trestle_task_xlsx_to_oscal_poam` **(default)**: Convert a FedRAMP-format XLSX spreadsheet into an OSCAL Plan of Action and Milestones (POA&M)
+- `trestle_task_list`: List the available trestle tasks, or describe one task's configuration keys
+- `trestle_task_run`: Run any trestle task from a configuration dictionary
+
+`trestle_task_run` covers every task the installed trestle provides, including
+ones with no typed tool here. Prefer the typed tools where they exist: they
+validate their arguments and document the input format.
+
+### Not covered
+
+The signing and provenance commands (`sign`, `verify`, `generate-manifest`,
+`sign-manifest`, `verify-manifest`, `canonicalize`), the `beta` feature-flag
+command, and the markdown governance commands (`author docs`, `author folders`,
+`author headers`, `author jinja`) have no tools here. See the design notes in
+[developer documents](docs/command-specs-development.md).
 
 For advanced use, refer to official [compliance-trestle docs](https://oscal-compass.dev/compliance-trestle/latest/) or [developer documents](docs/command-specs-development.md) in this repo.
 

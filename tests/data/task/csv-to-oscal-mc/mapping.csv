@@ -1,0 +1,4 @@
+$$Source_Resource,$$Target_Resource,$$Map_Source_Id_Ref_List,$$Map_Target_Id_Ref_List,$$Map_Relationship,$$Map_Confidence_Score
+Path to the source catalog or profile,Path to the target catalog or profile,Whitespace-separated source control ids,Whitespace-separated target control ids,Relationship type,Confidence score from 0 to 1
+catalogs/source/catalog.json,catalogs/target/catalog.json,ac-1,ac-1,equivalent,1.0
+catalogs/source/catalog.json,catalogs/target/catalog.json,ac-2,ac-2 ac-2.1,subset-of,0.8

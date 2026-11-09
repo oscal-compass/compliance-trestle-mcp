@@ -37,7 +37,7 @@ class TestTrestleTaskXlsxToOscalPoam:
         return {"success": False, "stdout": "", "stderr": stderr, "returncode": 1}
 
     def _capture_section(self, written):
-        def capture(args):
+        def capture(args, **kwargs):
             config_path = args[args.index("--config") + 1]
             cfg = configparser.ConfigParser()
             cfg.read(config_path)
@@ -128,7 +128,7 @@ class TestTrestleTaskXlsxToOscalPoam:
     async def test_config_file_deleted_after_call(self):
         captured = []
 
-        def capture_and_succeed(args):
+        def capture_and_succeed(args, **kwargs):
             captured.append(args[args.index("--config") + 1])
             return self._success_result()
 

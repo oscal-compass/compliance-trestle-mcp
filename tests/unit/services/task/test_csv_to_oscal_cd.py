@@ -48,7 +48,9 @@ class TestTrestleTaskCsvToOscalCd:
     async def test_success_required_params_only(self):
         """Test with only required parameters."""
         with patch(MOCK_RUN_MODULE) as mock_run:
-            mock_run.return_value = self._success_result("component-definition.json written")
+            mock_run.return_value = self._success_result(
+                "component-definition.json written"
+            )
             result = await trestle_task_csv_to_oscal_cd(self._base_params())
 
         assert "✅" in result
@@ -65,7 +67,7 @@ class TestTrestleTaskCsvToOscalCd:
         """Test that the generated config file has correct contents."""
         captured_config_path = []
 
-        def capture_and_succeed(args):
+        def capture_and_succeed(args, **kwargs):
             captured_config_path.append(args[args.index("--config") + 1])
             return self._success_result()
 
@@ -80,7 +82,7 @@ class TestTrestleTaskCsvToOscalCd:
         """Test that required config fields are written correctly."""
         written_configs = []
 
-        def capture(args):
+        def capture(args, **kwargs):
             config_path = args[args.index("--config") + 1]
             cfg = configparser.ConfigParser()
             cfg.read(config_path)
@@ -103,7 +105,7 @@ class TestTrestleTaskCsvToOscalCd:
         """Test with optional component_definition path."""
         written_configs = []
 
-        def capture(args):
+        def capture(args, **kwargs):
             config_path = args[args.index("--config") + 1]
             cfg = configparser.ConfigParser()
             cfg.read(config_path)
@@ -122,7 +124,7 @@ class TestTrestleTaskCsvToOscalCd:
         """Test with output_overwrite=False."""
         written_configs = []
 
-        def capture(args):
+        def capture(args, **kwargs):
             config_path = args[args.index("--config") + 1]
             cfg = configparser.ConfigParser()
             cfg.read(config_path)
@@ -130,7 +132,9 @@ class TestTrestleTaskCsvToOscalCd:
             return self._success_result()
 
         with patch(MOCK_RUN_MODULE, side_effect=capture):
-            await trestle_task_csv_to_oscal_cd(self._base_params(output_overwrite=False))
+            await trestle_task_csv_to_oscal_cd(
+                self._base_params(output_overwrite=False)
+            )
 
         assert written_configs[0]["output-overwrite"] == "false"
 
@@ -139,7 +143,7 @@ class TestTrestleTaskCsvToOscalCd:
         """Test with validate_controls='on'."""
         written_configs = []
 
-        def capture(args):
+        def capture(args, **kwargs):
             config_path = args[args.index("--config") + 1]
             cfg = configparser.ConfigParser()
             cfg.read(config_path)
@@ -158,7 +162,7 @@ class TestTrestleTaskCsvToOscalCd:
         """Test with class_column_mappings."""
         written_configs = []
 
-        def capture(args):
+        def capture(args, **kwargs):
             config_path = args[args.index("--config") + 1]
             cfg = configparser.ConfigParser()
             cfg.read(config_path)
@@ -190,7 +194,9 @@ class TestTrestleTaskCsvToOscalCd:
     async def test_failure_returns_error_message(self):
         """Test that command failure returns an error message."""
         with patch(MOCK_RUN_MODULE) as mock_run:
-            mock_run.return_value = self._failure_result("Missing required column $$Rule_Id")
+            mock_run.return_value = self._failure_result(
+                "Missing required column $$Rule_Id"
+            )
             result = await trestle_task_csv_to_oscal_cd(self._base_params())
 
         assert "❌" in result
@@ -203,7 +209,7 @@ class TestTrestleTaskCsvToOscalCd:
         """Test that the temp config file is deleted after a successful run."""
         captured_path = []
 
-        def capture(args):
+        def capture(args, **kwargs):
             captured_path.append(args[args.index("--config") + 1])
             return self._success_result()
 
@@ -217,7 +223,7 @@ class TestTrestleTaskCsvToOscalCd:
         """Test that the temp config file is deleted even when the command fails."""
         captured_path = []
 
-        def capture(args):
+        def capture(args, **kwargs):
             captured_path.append(args[args.index("--config") + 1])
             return self._failure_result()
 

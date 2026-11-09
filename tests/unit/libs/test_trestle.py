@@ -3,7 +3,12 @@
 
 from unittest.mock import MagicMock, patch
 
-from trestle_mcp.libs.trestle import find_trestle_bin, run_trestle_command
+from trestle_mcp.libs.trestle import (
+    DEFAULT_TIMEOUT,
+    LONG_TIMEOUT,
+    find_trestle_bin,
+    run_trestle_command,
+)
 
 
 class TestFindTrestleBin:
@@ -117,3 +122,54 @@ class TestRunTrestleCommand:
                 mock_run.assert_called_once()
                 call_kwargs = mock_run.call_args[1]
                 assert call_kwargs["cwd"] == "/custom/path"
+
+    def test_default_timeout_is_applied(self):
+        """Test the default timeout is handed to subprocess.run."""
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = "Success"
+        mock_result.stderr = ""
+
+        with patch(
+            "trestle_mcp.libs.trestle.subprocess.run", return_value=mock_result
+        ) as mock_run:
+            with patch(
+                "trestle_mcp.libs.trestle.find_trestle_bin", return_value="trestle"
+            ):
+                run_trestle_command(["init", "--local"])
+
+                assert mock_run.call_args[1]["timeout"] == DEFAULT_TIMEOUT
+
+    def test_custom_timeout_is_applied(self):
+        """Test an explicit timeout overrides the default."""
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = "Success"
+        mock_result.stderr = ""
+
+        with patch(
+            "trestle_mcp.libs.trestle.subprocess.run", return_value=mock_result
+        ) as mock_run:
+            with patch(
+                "trestle_mcp.libs.trestle.find_trestle_bin", return_value="trestle"
+            ):
+                run_trestle_command(["import"], timeout=LONG_TIMEOUT)
+
+                assert mock_run.call_args[1]["timeout"] == LONG_TIMEOUT
+                assert LONG_TIMEOUT > DEFAULT_TIMEOUT
+
+    def test_timeout_message_reports_the_actual_timeout(self):
+        """Test the timeout error names the timeout that was used, not a constant."""
+        from subprocess import TimeoutExpired
+
+        with patch(
+            "trestle_mcp.libs.trestle.subprocess.run",
+            side_effect=TimeoutExpired("cmd", LONG_TIMEOUT),
+        ):
+            with patch(
+                "trestle_mcp.libs.trestle.find_trestle_bin", return_value="trestle"
+            ):
+                result = run_trestle_command(["import"], timeout=LONG_TIMEOUT)
+
+                assert result["success"] is False
+                assert f"timed out after {LONG_TIMEOUT} seconds" in result["stderr"]

@@ -35,12 +35,12 @@ Measured on the tool set in this repository:
 
 | Selection | Tools | Characters | ~Tokens |
 |---|---:|---:|---:|
-| `core` | 12 | 36,381 | ~9,095 |
-| `author` | 11 | 39,695 | ~9,923 |
-| `task` | 5 | 19,848 | ~4,962 |
-| `authoring` (default) | 13 | 46,137 | ~11,534 |
-| `all` | 28 | 95,922 | ~23,980 |
-| `all,trestle_remove` | 29 | 98,685 | ~24,671 |
+| `core` | 12 | 39,032 | ~9,758 |
+| `author` | 11 | 39,684 | ~9,921 |
+| `task` | 5 | 20,318 | ~5,079 |
+| `authoring` (default) | 13 | 46,706 | ~11,676 |
+| `all` | 28 | 99,032 | ~24,758 |
+| `all,trestle_remove` | 29 | 101,795 | ~25,448 |
 
 The default, `authoring`, is **less than half** of `all`. That is the point of
 the selector: the whole trestle surface is available, but a session that only
@@ -60,33 +60,33 @@ come down.
 
 | Tool | Characters |
 |---|---:|
-| `trestle_task_csv_to_oscal_mc` | 5,097 |
-| `trestle_create` | 4,687 |
-| `trestle_author_ssp_generate` | 4,629 |
-| `trestle_task_xlsx_to_oscal_poam` | 4,530 |
-| `trestle_task_csv_to_oscal_cd` | 4,363 |
-| `trestle_author_ssp_filter` | 4,253 |
-| `trestle_author_component_assemble` | 3,788 |
-| `trestle_assemble` | 3,763 |
-| `trestle_author_profile_resolve` | 3,745 |
-| `trestle_author_catalog_assemble` | 3,727 |
-| `trestle_author_profile_assemble` | 3,702 |
-| `trestle_author_ssp_assemble` | 3,529 |
-| `trestle_author_profile_generate` | 3,385 |
-| `trestle_replicate` | 3,362 |
-| `trestle_task_run` | 3,273 |
-| `trestle_validate` | 3,161 |
-| `trestle_author_profile_inherit` | 3,148 |
-| `trestle_version` | 3,082 |
-| `trestle_author_component_generate` | 3,070 |
-| `trestle_href` | 2,947 |
-| `trestle_merge` | 2,898 |
+| `trestle_task_csv_to_oscal_mc` | 5,570 |
+| `trestle_create` | 5,155 |
+| `trestle_author_ssp_generate` | 4,628 |
+| `trestle_task_xlsx_to_oscal_poam` | 4,529 |
+| `trestle_task_csv_to_oscal_cd` | 4,362 |
+| `trestle_author_ssp_filter` | 4,252 |
+| `trestle_assemble` | 4,230 |
+| `trestle_version` | 4,153 |
+| `trestle_replicate` | 3,830 |
+| `trestle_author_component_assemble` | 3,787 |
+| `trestle_author_profile_resolve` | 3,744 |
+| `trestle_author_catalog_assemble` | 3,726 |
+| `trestle_author_profile_assemble` | 3,701 |
+| `trestle_author_ssp_assemble` | 3,528 |
+| `trestle_author_profile_generate` | 3,384 |
+| `trestle_task_run` | 3,272 |
+| `trestle_validate` | 3,266 |
+| `trestle_author_profile_inherit` | 3,147 |
+| `trestle_author_component_generate` | 3,069 |
+| `trestle_href` | 2,975 |
+| `trestle_merge` | 2,943 |
 | `trestle_remove` | 2,762 |
 | `trestle_partial_object_validate` | 2,761 |
-| `trestle_author_catalog_generate` | 2,707 |
+| `trestle_author_catalog_generate` | 2,706 |
 | `trestle_import` | 2,697 |
 | `trestle_task_list` | 2,579 |
-| `trestle_split` | 2,495 |
+| `trestle_split` | 2,494 |
 | `trestle_describe` | 2,364 |
 | `trestle_init` | 2,151 |
 

@@ -4,7 +4,8 @@ trestle-mcp: MCP server for compliance-trestle OSCAL framework.
 This package provides MCP tools to manage OSCAL models using the trestle CLI.
 """
 
-from importlib.metadata import PackageNotFoundError, version as _version
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _version
 
 try:
     __version__ = _version("compliance-trestle-mcp")

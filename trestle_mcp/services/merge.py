@@ -93,11 +93,17 @@ async def trestle_merge(params: TrestleMergeInput) -> str:
     # workspace not found at path <root>" about a workspace that is perfectly
     # fine, because merge expects its working directory to be inside a model.
     # So say what is actually missing, and name the path the caller passed.
+    #
+    # `Looked for` is absolute. Without a `trestle_root` there is no join to
+    # do, so it would otherwise repeat `model_dir` verbatim and add nothing --
+    # in exactly the case where the caller cannot work out the absolute path
+    # themselves, because they do not know the directory this server was
+    # started in.
     if not os.path.isdir(model_dir):
         return (
             f"❌ Model directory not found\n\n"
             f"Model: {params.model_dir}\nElement: {params.element}\n\n"
-            f"Looked for: {model_dir}\n"
+            f"Looked for: {os.path.abspath(model_dir)}\n"
             f"`model_dir` must be the directory that holds the model file, e.g. "
             f"'catalogs/mycat'. Run `trestle_describe` or list the workspace to "
             f"check the name."

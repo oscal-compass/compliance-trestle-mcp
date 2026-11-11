@@ -245,6 +245,27 @@ class TestTrestleMerge:
             mock_run.assert_not_called()
 
     @pytest.mark.asyncio
+    async def test_the_looked_for_path_is_absolute_without_a_root(
+        self, tmp_path, monkeypatch
+    ):
+        """Test the error names an absolute path even with no trestle_root.
+
+        With no root there is no join to do, so a bare `model_dir` would just
+        repeat the `Model:` line and add nothing -- in the one case where the
+        caller cannot work the absolute path out themselves, because they do
+        not know which directory the client started this server in.
+        """
+        monkeypatch.chdir(tmp_path)
+        with patch("trestle_mcp.services.merge.run_trestle_command") as mock_run:
+            params = merge.TrestleMergeInput(
+                element="catalog.metadata", model_dir="catalogs/nope"
+            )
+            result = await merge.trestle_merge(params)
+
+            assert f"Looked for: {tmp_path / 'catalogs' / 'nope'}" in result
+            mock_run.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_an_existing_model_dir_still_shells_out(self, tmp_path):
         """Test the guard does not block the normal case."""
         root = tmp_path / "ws"

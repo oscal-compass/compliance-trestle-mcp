@@ -18,8 +18,8 @@ from __future__ import annotations
 
 import asyncio
 import os
-import tempfile
 import re
+import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -53,13 +53,18 @@ REQUIRED_HEADINGS = (*EXEMPTING_HEADINGS, OPT_IN_HEADING)
 GENERIC_TASK_RUNNER = "trestle_task_run"
 
 
-def _argv_of(spec: tools.ToolSpec) -> list[str] | None:
+def _argv_of(spec: tools.ToolSpec, workspace: str) -> list[str] | None:
     """The command line a tool builds, or None if it never shells out.
 
     Every field is populated so that optional arguments appear too. Only the
     leading command path is read, so the values mostly do not matter -- the
     exception is a path a service checks before shelling out, which has to
     exist or the handler returns an error instead of building a command line.
+
+    Args:
+        spec: The tool to inspect.
+        workspace: An existing directory to use for path-shaped arguments. The
+            caller owns it, so one is made per sweep rather than per tool.
     """
     module = __import__(spec.handler.__module__, fromlist=["run_trestle_command"])
     if not hasattr(module, "run_trestle_command"):
@@ -69,7 +74,6 @@ def _argv_of(spec: tools.ToolSpec) -> list[str] | None:
     # dummy has to be a real one. Anything else that grows a pre-flight check
     # on a path will show up here as a None argv and a coverage failure naming
     # the command, which is the right way to find out.
-    workspace = tempfile.mkdtemp()
     model_dir = os.path.join(workspace, "models", "sample")
     os.makedirs(model_dir, exist_ok=True)
 
@@ -111,16 +115,20 @@ def _argv_of(spec: tools.ToolSpec) -> list[str] | None:
 def covered_commands() -> set[str]:
     """Command paths the tools invoke, e.g. {"split", "author ssp-generate"}."""
     covered: set[str] = set()
-    for spec in tools.TOOL_SPECS:
-        argv = _argv_of(spec)
-        if argv is None:
-            continue
-        # "author ssp-generate" and "task csv-to-oscal-cd" are two words; every
-        # other command is the first token on its own.
-        if argv[0] in ("author", "task") and len(argv) > 1:
-            covered.add(f"{argv[0]} {argv[1]}")
-        else:
-            covered.add(argv[0])
+    # One directory for the whole sweep, removed afterwards. `mkdtemp` inside
+    # `_argv_of` left one per tool per call -- 84 in a single run of this file,
+    # which pile up locally because nothing deletes them.
+    with tempfile.TemporaryDirectory() as workspace:
+        for spec in tools.TOOL_SPECS:
+            argv = _argv_of(spec, workspace)
+            if argv is None:
+                continue
+            # "author ssp-generate" and "task csv-to-oscal-cd" are two words;
+            # every other command is the first token on its own.
+            if argv[0] in ("author", "task") and len(argv) > 1:
+                covered.add(f"{argv[0]} {argv[1]}")
+            else:
+                covered.add(argv[0])
     return covered
 
 

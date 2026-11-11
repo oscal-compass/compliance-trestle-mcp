@@ -7,7 +7,11 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from trestle_mcp.libs.trestle import command_output, run_trestle_command
+from trestle_mcp.libs.trestle import (
+    LONG_TIMEOUT,
+    command_output,
+    run_trestle_command,
+)
 
 
 class TrestleCatalogGenerateInput(BaseModel):
@@ -77,7 +81,9 @@ async def trestle_catalog_generate(params: TrestleCatalogGenerateInput) -> str:
     if params.verbose:
         args.append("--verbose")
 
-    result = await run_trestle_command(args)
+    # Writes a markdown file per control, so it walks the whole catalog --
+    # every control of a full NIST SP 800-53 revision.
+    result = await run_trestle_command(args, timeout=LONG_TIMEOUT)
 
     if result["success"]:
         output = command_output(result)

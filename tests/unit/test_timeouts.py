@@ -22,9 +22,18 @@ from trestle_mcp.libs.trestle import DEFAULT_TIMEOUT, LONG_TIMEOUT
 
 #: Tools whose command resolves a profile, walks a whole catalog, or fetches
 #: remote content, with the reason. Anything here must pass LONG_TIMEOUT.
+#:
+#: Judge it by what trestle ends up doing. trestle's prof.py calls
+#: `ProfileResolver` from four classes, all unconditionally -- Generate,
+#: Assemble, Resolve and Inherit -- so all four cost what profile resolution
+#: costs, however their commands are named.
 SLOW_TOOLS = {
     "trestle_import": "fetches the model, which may be a remote catalog",
     "trestle_author_profile_resolve": "walks every control in the imported catalog",
+    "trestle_author_profile_generate": "resolves the profile before writing markdown",
+    "trestle_author_profile_assemble": "resolves the profile when reading markdown back",
+    "trestle_author_catalog_generate": "writes a markdown file per control",
+    "trestle_author_catalog_assemble": "reads a markdown file per control",
     "trestle_author_profile_inherit": "resolves the parent profile and the leveraged SSP's",
     "trestle_author_component_generate": "resolves each rule's Profile_Source",
     "trestle_author_component_assemble": "re-resolves each rule's Profile_Source",

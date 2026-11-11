@@ -7,7 +7,11 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from trestle_mcp.libs.trestle import command_output, run_trestle_command
+from trestle_mcp.libs.trestle import (
+    LONG_TIMEOUT,
+    command_output,
+    run_trestle_command,
+)
 
 
 class TrestleAuthorProfileAssembleInput(BaseModel):
@@ -102,7 +106,9 @@ async def trestle_author_profile_assemble(
     if params.trestle_root:
         args.extend(["--trestle-root", params.trestle_root])
 
-    result = await run_trestle_command(args)
+    # ProfileAssemble resolves the profile too, unconditionally, for the same
+    # reason and at the same cost as profile-generate.
+    result = await run_trestle_command(args, timeout=LONG_TIMEOUT)
 
     if result["success"]:
         output = command_output(result)

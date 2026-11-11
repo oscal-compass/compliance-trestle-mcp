@@ -186,14 +186,17 @@ when stderr is empty, which is the normal case for a successful command.
 
 **Timeouts.** `run_trestle_command` applies `DEFAULT_TIMEOUT` (60s). Pass
 `timeout=LONG_TIMEOUT` (600s) for commands that fetch remote content, resolve a
-profile or walk a whole catalog. Twelve tools do, and the list lives in
+profile or walk a whole catalog. Sixteen tools do, and the list lives in
 `SLOW_TOOLS` in [`tests/unit/test_timeouts.py`](../../tests/unit/test_timeouts.py)
 with a reason against each — a tool that needs the long timeout and does not
 take it fails there, and so does one that takes it without being listed. Judge
-it by what trestle ends up doing, not by the command's name: `ssp-generate` had
-the long timeout while `component-generate`, `component-assemble`,
-`ssp-assemble`, `ssp-filter` and `profile-inherit` did not, though they resolve
-the same profiles over the same catalogs.
+it by what trestle ends up doing, not by the command's name. trestle's
+`prof.py` calls `ProfileResolver` from four classes and never conditionally, so
+`profile-generate` and `profile-assemble` cost what `profile-resolve` costs
+even though only the third says "resolve" — getting that wrong is how
+`ssp-generate` ended up with the long timeout while `component-generate`,
+`component-assemble`, `ssp-assemble`, `ssp-filter`, `profile-inherit`,
+`profile-generate` and `profile-assemble` did not.
 
 **Tasks take an INI file.** Every `trestle task` is driven by a
 `[task.<name>]` section. Build the values as a dict and hand it to

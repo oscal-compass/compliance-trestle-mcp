@@ -82,10 +82,12 @@ relative path argument is relative to the workspace rather than to wherever the
 client launched the server, waits for it on a worker thread so a slow command
 does not stop the event loop, and applies a timeout: `DEFAULT_TIMEOUT` (60s) for
 commands that only touch local models, and `LONG_TIMEOUT` (600s) for those that
-fetch remote content, resolve a profile or walk a whole catalog. Twelve services
-pass the longer one — `import`, the four `author` commands that resolve a
-profile (`profile-resolve`, `profile-inherit`, `component-generate`,
-`component-assemble`), the three SSP commands (`ssp-generate`, `ssp-assemble`,
+fetch remote content, resolve a profile or walk a whole catalog. Sixteen
+services pass the longer one — `import`, the six `author` commands that resolve
+a profile (`profile-generate`, `profile-assemble`, `profile-resolve`,
+`profile-inherit`, `component-generate`, `component-assemble`), the two
+`catalog` commands that walk every control (`catalog-generate`,
+`catalog-assemble`), the three SSP commands (`ssp-generate`, `ssp-assemble`,
 `ssp-filter`) and the four `task` tools that run a task. `task_list` only reads
 help text, so it keeps the default. Which tools these are is pinned by
 `tests/unit/test_timeouts.py`.

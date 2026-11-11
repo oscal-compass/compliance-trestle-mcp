@@ -615,3 +615,119 @@ async def test_init_overwrites_an_existing_task_config(workspace):
 
         assert "✅" in result
         assert "task.csv-to-oscal-cd" not in config.read_text(encoding="utf-8")
+
+
+@pytest.fixture
+def workspace_from_outside(tmp_path):
+    """A trestle workspace with the process cwd *outside* it.
+
+    This is the arrangement an MCP server actually runs in: the client launches
+    it from wherever it happens to be, which is not the workspace. Every other
+    e2e fixture chdirs into the workspace first, so none of them exercise the
+    condition the path-resolution fix exists for.
+    """
+    root = tmp_path / "ws"
+    root.mkdir()
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+
+    try:
+        previous = Path.cwd()
+    except FileNotFoundError:
+        previous = tmp_path
+    os.chdir(elsewhere)
+    try:
+        yield {
+            "root": root,
+            "cwd": elsewhere,
+            "catalog": (DATA_DIR / "test-catalog.json").absolute(),
+        }
+    finally:
+        os.chdir(previous)
+
+
+@pytest.mark.anyio
+async def test_relative_paths_work_with_the_server_outside_the_workspace(
+    workspace_from_outside,
+):
+    """Relative arguments resolve against trestle_root, not the server's cwd.
+
+    Before the subprocess was run inside the workspace, every one of these
+    failed with "<server cwd>/catalogs/c/catalog.json does not exist" -- a path
+    the caller never named. The server's working directory here holds nothing,
+    so a tool that resolved against it could not accidentally pass.
+    """
+    root = workspace_from_outside["root"]
+    outside = workspace_from_outside["cwd"]
+
+    async with Client(build_server("all,trestle_remove")) as client:
+        await call_tool(
+            client, "trestle_init", {"mode": "local", "trestle_root": str(root)}
+        )
+        await call_tool(
+            client,
+            "trestle_import",
+            {
+                "file": workspace_from_outside["catalog"].as_posix(),
+                "output": "c",
+                "trestle_root": str(root),
+            },
+        )
+
+        # every one of these takes a path relative to the workspace
+        described = await call_tool(
+            client,
+            "trestle_describe",
+            {"file": "catalogs/c/catalog.json", "trestle_root": str(root)},
+        )
+        assert "✅" in described
+
+        split = await call_tool(
+            client,
+            "trestle_split",
+            {
+                "file": "catalogs/c/catalog.json",
+                "element": "catalog.metadata",
+                "trestle_root": str(root),
+            },
+        )
+        assert "✅" in split
+        assert (root / "catalogs" / "c" / "catalog" / "metadata.json").exists()
+
+        merged = await call_tool(
+            client,
+            "trestle_merge",
+            {
+                "element": "catalog.metadata",
+                "model_dir": "catalogs/c",
+                "trestle_root": str(root),
+            },
+        )
+        assert "✅" in merged
+        assert not (root / "catalogs" / "c" / "catalog").exists()
+
+        # nothing was written where the server happens to be running
+        assert list(outside.iterdir()) == []
+
+
+@pytest.mark.anyio
+async def test_a_mistyped_trestle_root_reports_what_is_wrong(workspace_from_outside):
+    """A root that does not exist gets trestle's message, not errno 2.
+
+    Running the subprocess in the root made a typo there raise
+    FileNotFoundError before trestle started, so the result read "Error
+    executing trestle: [Errno 2] No such file or directory" -- which sounds
+    like the trestle binary is missing.
+    """
+    missing = str(workspace_from_outside["root"]) + "-typo"
+
+    async with Client(build_server("core")) as client:
+        result = await call_tool(
+            client,
+            "trestle_describe",
+            {"file": "catalogs/c/catalog.json", "trestle_root": missing},
+        )
+
+        assert "❌" in result
+        assert "No such file or directory" not in result
+        assert "not in a valid trestle root directory" in result

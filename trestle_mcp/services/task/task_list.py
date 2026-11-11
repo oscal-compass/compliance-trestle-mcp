@@ -77,7 +77,7 @@ async def trestle_task_list(params: TrestleTaskListInput) -> str:
     if params.verbose:
         args.append("--verbose")
 
-    result = run_trestle_command(args)
+    result = await run_trestle_command(args)
 
     # `trestle task` writes both the list and the per-task help through its
     # logger, which goes to stderr, so a successful run can have empty stdout.

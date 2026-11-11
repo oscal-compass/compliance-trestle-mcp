@@ -93,7 +93,7 @@ async def trestle_author_profile_resolve(
         args.extend(["--trestle-root", params.trestle_root])
 
     # Resolving a profile over a large catalog takes minutes, not seconds.
-    result = run_trestle_command(args, timeout=LONG_TIMEOUT)
+    result = await run_trestle_command(args, timeout=LONG_TIMEOUT)
 
     if result["success"]:
         output = result["stdout"].strip()

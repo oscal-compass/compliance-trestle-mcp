@@ -73,7 +73,7 @@ async def trestle_import(params: TrestleImportInput) -> str:
 
     # A remote catalog can be tens of MB over the network; the default
     # timeout is not enough for e.g. the NIST SP 800-53 rev5 catalog.
-    result = run_trestle_command(args, timeout=LONG_TIMEOUT)
+    result = await run_trestle_command(args, timeout=LONG_TIMEOUT)
 
     if result["success"]:
         output = result["stdout"].strip()

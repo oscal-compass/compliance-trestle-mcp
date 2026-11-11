@@ -116,7 +116,7 @@ async def trestle_split(params: TrestleSplitInput) -> str:
     if params.verbose:
         args.append("--verbose")
 
-    result = run_trestle_command(args)
+    result = await run_trestle_command(args)
 
     if result["success"]:
         return f"✅ Model split successfully\n\n{result['stdout'].strip()}"
@@ -171,6 +171,10 @@ reaches a positional slot, constrain its shape.
 **Prefer `--flag value` over positional arguments.** Where the CLI insists on a
 positional (`trestle assemble <type>`, `trestle task <name>`), use an enum from
 `libs/oscal_types.py` or a validated pattern.
+
+**Await the runner.** `run_trestle_command` is a coroutine: it waits for the
+subprocess on a worker thread, so a slow command does not stop the event loop
+and with it every other tool call, ping and cancellation on the server.
 
 **Timeouts.** `run_trestle_command` applies `DEFAULT_TIMEOUT` (60s). Pass
 `timeout=LONG_TIMEOUT` (600s) for commands that fetch remote content or walk a

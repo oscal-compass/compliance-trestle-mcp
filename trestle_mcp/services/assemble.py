@@ -88,7 +88,7 @@ async def trestle_assemble(params: TrestleAssembleInput) -> str:
     if params.verbose:
         args.append("--verbose")
 
-    result = run_trestle_command(args)
+    result = await run_trestle_command(args)
 
     if result["success"]:
         output = result["stdout"].strip()

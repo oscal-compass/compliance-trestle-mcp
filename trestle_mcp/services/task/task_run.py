@@ -100,7 +100,7 @@ async def trestle_task_run(params: TrestleTaskRunInput) -> str:
 
         # Tasks read spreadsheets and can resolve profiles; none of that fits in
         # the default timeout.
-        result = run_trestle_command(args, timeout=LONG_TIMEOUT)
+        result = await run_trestle_command(args, timeout=LONG_TIMEOUT)
     finally:
         Path(config_path).unlink(missing_ok=True)
 

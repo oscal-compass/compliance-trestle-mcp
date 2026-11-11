@@ -3,6 +3,7 @@
 This module provides common functions for interacting with the trestle CLI.
 """
 
+import asyncio
 import os
 import subprocess
 from pathlib import Path
@@ -76,12 +77,18 @@ def absolute_trestle_root(args: list[str]) -> tuple[list[str], Optional[str]]:
     return list(args), None
 
 
-def run_trestle_command(
+async def run_trestle_command(
     args: list[str],
     cwd: Optional[str] = None,
     timeout: int = DEFAULT_TIMEOUT,
 ) -> dict:
     """Run a trestle CLI command and return the result.
+
+    Awaitable, and the subprocess is waited for on a worker thread. Run
+    directly, the wait blocked the event loop for up to LONG_TIMEOUT -- ten
+    minutes during which the whole server answered nothing: no other tool call,
+    no ping, no cancellation. A client with a shorter request timeout gave up
+    while the server stayed stuck.
 
     The command runs in `cwd` if the caller names one, otherwise in the
     `--trestle-root` the arguments carry, otherwise in this process's working
@@ -104,11 +111,21 @@ def run_trestle_command(
     args, trestle_root = absolute_trestle_root(args)
     trestle_bin = find_trestle_bin()
     cmd = [trestle_bin] + args
+    workdir = cwd or trestle_root or os.getcwd()
 
+    return await asyncio.to_thread(_run_blocking, cmd, workdir, timeout)
+
+
+def _run_blocking(cmd: list[str], workdir: str, timeout: int) -> dict:
+    """Run the command and wait for it. Called on a worker thread.
+
+    Every failure comes back as a result dict rather than an exception, so the
+    service layer has one shape to report from.
+    """
     try:
         result = subprocess.run(
             cmd,
-            cwd=cwd or trestle_root or os.getcwd(),
+            cwd=workdir,
             capture_output=True,
             text=True,
             timeout=timeout,

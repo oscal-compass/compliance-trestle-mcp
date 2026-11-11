@@ -102,7 +102,7 @@ async def trestle_author_profile_assemble(
     if params.trestle_root:
         args.extend(["--trestle-root", params.trestle_root])
 
-    result = run_trestle_command(args)
+    result = await run_trestle_command(args)
 
     if result["success"]:
         output = result["stdout"].strip()

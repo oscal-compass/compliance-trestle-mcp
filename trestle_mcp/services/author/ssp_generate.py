@@ -135,7 +135,7 @@ async def trestle_author_ssp_generate(params: TrestleAuthorSspGenerateInput) -> 
 
     # ssp-generate resolves the profile, which walks every control in the
     # imported catalog; the default timeout is not enough for a real baseline.
-    result = run_trestle_command(args, timeout=LONG_TIMEOUT)
+    result = await run_trestle_command(args, timeout=LONG_TIMEOUT)
 
     if result["success"]:
         output = result["stdout"].strip()

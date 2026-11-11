@@ -85,7 +85,7 @@ async def trestle_merge(params: TrestleMergeInput) -> str:
     if params.trestle_root and not os.path.isabs(model_dir):
         model_dir = os.path.join(params.trestle_root, model_dir)
 
-    result = run_trestle_command(args, cwd=model_dir)
+    result = await run_trestle_command(args, cwd=model_dir)
 
     if result["success"]:
         output = result["stdout"].strip()

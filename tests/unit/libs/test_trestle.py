@@ -1,14 +1,29 @@
 #!/usr/bin/env python3
 """Unit tests for libs/trestle.py."""
 
+import asyncio
+import threading
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from trestle_mcp.libs.trestle import (
     DEFAULT_TIMEOUT,
     LONG_TIMEOUT,
     find_trestle_bin,
-    run_trestle_command,
 )
+from trestle_mcp.libs.trestle import run_trestle_command as _run_trestle_command
+
+
+def run_trestle_command(*args, **kwargs) -> dict:
+    """Drive the coroutine from these synchronous tests.
+
+    The runner is awaitable so that the wait happens on a worker thread rather
+    than on the event loop. What it builds -- argv, working directory, timeout
+    -- is what these tests are about, so they call it through here rather than
+    each becoming an async test.
+    """
+    return asyncio.run(_run_trestle_command(*args, **kwargs))
 
 
 class TestFindTrestleBin:
@@ -237,3 +252,61 @@ class TestTrestleRootIsTheWorkingDirectory:
         with patch("trestle_mcp.libs.trestle.os.getcwd", return_value="/start"):
             call = self._run(["version"])
         assert call[1]["cwd"] == "/start"
+
+
+class TestTheEventLoopStaysFree:
+    """Test the subprocess wait does not block the event loop.
+
+    The wait used to happen on the loop, so a slow command -- an import of a
+    remote catalog, a profile resolve, anything carrying LONG_TIMEOUT -- stopped
+    the whole server for as long as it ran: no other tool call, no ping, no
+    cancellation.
+    """
+
+    @pytest.mark.asyncio
+    async def test_other_coroutines_run_while_a_command_is_waiting(self):
+        """Test a concurrent coroutine runs *during* the wait, not after it.
+
+        The subprocess only finishes once another coroutine releases it, so the
+        two have to overlap for this to complete at all. The assertion is on
+        `released`: if the wait held the loop, the releasing coroutine never got
+        a turn, `release.wait` returned False on its own timeout, and the ticks
+        that follow are no evidence of concurrency.
+        """
+        started = threading.Event()
+        release = threading.Event()
+        released = None
+        ticks = 0
+
+        def slow_subprocess(*args, **kwargs):
+            nonlocal released
+            started.set()
+            released = release.wait(timeout=2)
+            result = MagicMock()
+            result.returncode = 0
+            result.stdout = "done"
+            result.stderr = ""
+            return result
+
+        async def tick():
+            nonlocal ticks
+            while not started.is_set():
+                await asyncio.sleep(0.01)
+            for _ in range(3):
+                ticks += 1
+                await asyncio.sleep(0.01)
+            release.set()
+
+        with patch(
+            "trestle_mcp.libs.trestle.subprocess.run", side_effect=slow_subprocess
+        ):
+            with patch(
+                "trestle_mcp.libs.trestle.find_trestle_bin", return_value="trestle"
+            ):
+                result, _ = await asyncio.gather(
+                    _run_trestle_command(["import"], timeout=LONG_TIMEOUT), tick()
+                )
+
+        assert released is True, "the event loop was blocked for the whole wait"
+        assert ticks == 3
+        assert result["success"] is True

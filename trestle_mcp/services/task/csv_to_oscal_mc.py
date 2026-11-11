@@ -131,7 +131,7 @@ async def trestle_task_csv_to_oscal_mc(params: TrestleTaskCsvToOscalMcInput) -> 
 
         # Both sides of every mapping are loaded, and a profile href on either
         # side is fully resolved, so this is as slow as profile resolution.
-        result = run_trestle_command(args, timeout=LONG_TIMEOUT)
+        result = await run_trestle_command(args, timeout=LONG_TIMEOUT)
     finally:
         Path(config_path).unlink(missing_ok=True)
 

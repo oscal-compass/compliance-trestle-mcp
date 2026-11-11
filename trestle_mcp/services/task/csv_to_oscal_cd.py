@@ -133,7 +133,7 @@ async def trestle_task_csv_to_oscal_cd(params: TrestleTaskCsvToOscalCdInput) -> 
         if params.verbose:
             args.append("--verbose")
 
-        result = run_trestle_command(args, timeout=LONG_TIMEOUT)
+        result = await run_trestle_command(args, timeout=LONG_TIMEOUT)
     finally:
         Path(config_path).unlink(missing_ok=True)
 

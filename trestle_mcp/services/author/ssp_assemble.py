@@ -95,7 +95,7 @@ async def trestle_author_ssp_assemble(params: TrestleAuthorSspAssembleInput) -> 
     if params.verbose:
         args.append("--verbose")
 
-    result = run_trestle_command(args)
+    result = await run_trestle_command(args)
 
     if result["success"]:
         output = result["stdout"].strip()

@@ -17,6 +17,8 @@ on.
 from __future__ import annotations
 
 import asyncio
+import os
+import tempfile
 import re
 from pathlib import Path
 from unittest.mock import patch
@@ -54,12 +56,22 @@ GENERIC_TASK_RUNNER = "trestle_task_run"
 def _argv_of(spec: tools.ToolSpec) -> list[str] | None:
     """The command line a tool builds, or None if it never shells out.
 
-    Every field is populated so that optional arguments appear too; only the
-    leading command path is read, so the values do not matter.
+    Every field is populated so that optional arguments appear too. Only the
+    leading command path is read, so the values mostly do not matter -- the
+    exception is a path a service checks before shelling out, which has to
+    exist or the handler returns an error instead of building a command line.
     """
     module = __import__(spec.handler.__module__, fromlist=["run_trestle_command"])
     if not hasattr(module, "run_trestle_command"):
         return None
+
+    # `trestle_merge` returns early when `model_dir` is not a directory, so the
+    # dummy has to be a real one. Anything else that grows a pre-flight check
+    # on a path will show up here as a None argv and a coverage failure naming
+    # the command, which is the right way to find out.
+    workspace = tempfile.mkdtemp()
+    model_dir = os.path.join(workspace, "models", "sample")
+    os.makedirs(model_dir, exist_ok=True)
 
     def value(annotation: object) -> object:
         text = str(annotation)
@@ -79,9 +91,12 @@ def _argv_of(spec: tools.ToolSpec) -> list[str] | None:
         return "csv-to-oscal-cd"
 
     fields = spec.input_model.model_fields
-    params = spec.input_model(
-        **{name: value(field.annotation) for name, field in fields.items()}
-    )
+    supplied = {name: value(field.annotation) for name, field in fields.items()}
+    if "model_dir" in supplied:
+        supplied["model_dir"] = model_dir
+    if "trestle_root" in supplied:
+        supplied["trestle_root"] = workspace
+    params = spec.input_model(**supplied)
     with patch(f"{module.__name__}.run_trestle_command") as mock_run:
         mock_run.return_value = {
             "success": True,

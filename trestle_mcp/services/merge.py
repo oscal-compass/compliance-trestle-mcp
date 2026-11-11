@@ -85,6 +85,24 @@ async def trestle_merge(params: TrestleMergeInput) -> str:
     if params.trestle_root and not os.path.isabs(model_dir):
         model_dir = os.path.join(params.trestle_root, model_dir)
 
+    # Checked here rather than left to the runner. The runner declines to use a
+    # working directory that is not there and falls back to the trestle root,
+    # which is right everywhere else -- the root is what the caller got wrong,
+    # and trestle then says so. For merge it is the model directory that is
+    # wrong, and running in the root instead makes trestle report "Trestle
+    # workspace not found at path <root>" about a workspace that is perfectly
+    # fine, because merge expects its working directory to be inside a model.
+    # So say what is actually missing, and name the path the caller passed.
+    if not os.path.isdir(model_dir):
+        return (
+            f"❌ Model directory not found\n\n"
+            f"Model: {params.model_dir}\nElement: {params.element}\n\n"
+            f"Looked for: {model_dir}\n"
+            f"`model_dir` must be the directory that holds the model file, e.g. "
+            f"'catalogs/mycat'. Run `trestle_describe` or list the workspace to "
+            f"check the name."
+        )
+
     result = await run_trestle_command(args, cwd=model_dir)
 
     if result["success"]:

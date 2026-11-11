@@ -161,7 +161,7 @@ class TestTrestleMerge:
     """Test suite for trestle_merge tool."""
 
     @pytest.mark.asyncio
-    async def test_merge_runs_in_the_model_directory_under_the_root(self):
+    async def test_merge_runs_in_the_model_directory_under_the_root(self, tmp_path):
         """Test a relative model_dir is resolved against trestle_root.
 
         trestle merge resolves the destination model relative to its working
@@ -170,36 +170,46 @@ class TestTrestleMerge:
         workspace*: passing the bare relative path would resolve it against
         whatever directory the client started this server in.
         """
+        root = tmp_path / "ws"
+        (root / "catalogs" / "mycat").mkdir(parents=True)
         with patch("trestle_mcp.services.merge.run_trestle_command") as mock_run:
             mock_run.return_value = SUCCESS
             params = merge.TrestleMergeInput(
                 element="catalog.metadata",
                 model_dir="catalogs/mycat",
-                trestle_root="/ws",
+                trestle_root=str(root),
             )
             result = await merge.trestle_merge(params)
             assert "✅" in result and "catalogs/mycat" in result
             args = mock_run.call_args[0][0]
             assert args[0] == "merge"
             assert args[args.index("--element") + 1] == "catalog.metadata"
-            assert mock_run.call_args[1]["cwd"] == "/ws/catalogs/mycat"
+            assert mock_run.call_args[1]["cwd"] == str(root / "catalogs" / "mycat")
 
     @pytest.mark.asyncio
-    async def test_merge_keeps_an_absolute_model_dir(self):
+    async def test_merge_keeps_an_absolute_model_dir(self, tmp_path):
         """Test an absolute model_dir is used as given, root or no root."""
+        root = tmp_path / "ws"
+        root.mkdir()
+        elsewhere = tmp_path / "elsewhere" / "catalogs" / "mycat"
+        elsewhere.mkdir(parents=True)
         with patch("trestle_mcp.services.merge.run_trestle_command") as mock_run:
             mock_run.return_value = SUCCESS
             params = merge.TrestleMergeInput(
                 element="catalog.metadata",
-                model_dir="/elsewhere/catalogs/mycat",
-                trestle_root="/ws",
+                model_dir=str(elsewhere),
+                trestle_root=str(root),
             )
             await merge.trestle_merge(params)
-            assert mock_run.call_args[1]["cwd"] == "/elsewhere/catalogs/mycat"
+            assert mock_run.call_args[1]["cwd"] == str(elsewhere)
 
     @pytest.mark.asyncio
-    async def test_merge_without_a_root_uses_the_model_dir_as_given(self):
+    async def test_merge_without_a_root_uses_the_model_dir_as_given(
+        self, tmp_path, monkeypatch
+    ):
         """Test the no-root case is unchanged: cwd is the model_dir itself."""
+        (tmp_path / "catalogs" / "mycat").mkdir(parents=True)
+        monkeypatch.chdir(tmp_path)
         with patch("trestle_mcp.services.merge.run_trestle_command") as mock_run:
             mock_run.return_value = SUCCESS
             params = merge.TrestleMergeInput(
@@ -207,6 +217,49 @@ class TestTrestleMerge:
             )
             await merge.trestle_merge(params)
             assert mock_run.call_args[1]["cwd"] == "catalogs/mycat"
+
+    @pytest.mark.asyncio
+    async def test_a_missing_model_dir_is_reported_as_such(self, tmp_path):
+        """Test a mistyped model_dir names the path, and does not reach trestle.
+
+        The runner declines a working directory that is not there and falls
+        back to the trestle root. Everywhere else that is right -- the root is
+        what the caller got wrong. For merge the model directory is what is
+        wrong, and running in the root makes trestle report "Trestle workspace
+        not found at path <root>" about a workspace that is fine, because merge
+        expects its working directory to be inside a model.
+        """
+        root = tmp_path / "ws"
+        root.mkdir()
+        with patch("trestle_mcp.services.merge.run_trestle_command") as mock_run:
+            params = merge.TrestleMergeInput(
+                element="catalog.metadata",
+                model_dir="catalogs/nope",
+                trestle_root=str(root),
+            )
+            result = await merge.trestle_merge(params)
+
+            assert "❌" in result
+            assert "catalogs/nope" in result
+            assert "Model directory not found" in result
+            mock_run.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_an_existing_model_dir_still_shells_out(self, tmp_path):
+        """Test the guard does not block the normal case."""
+        root = tmp_path / "ws"
+        (root / "catalogs" / "mycat").mkdir(parents=True)
+        with patch("trestle_mcp.services.merge.run_trestle_command") as mock_run:
+            mock_run.return_value = SUCCESS
+            params = merge.TrestleMergeInput(
+                element="catalog.metadata",
+                model_dir="catalogs/mycat",
+                trestle_root=str(root),
+            )
+            result = await merge.trestle_merge(params)
+
+            assert "✅" in result
+            assert mock_run.call_args[1]["cwd"] == str(root / "catalogs" / "mycat")
 
     @pytest.mark.asyncio
     async def test_merge_failure(self):

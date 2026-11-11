@@ -21,9 +21,17 @@ class TrestleTaskRunInput(BaseModel):
 
     task: str = Field(
         ...,
+        # The name lands in a positional slot of `trestle task <name>`, so a
+        # value starting with "-" is read as a flag instead: `task="--help"`
+        # makes trestle print its usage and exit 0, which this service would
+        # report as a successful run of a task that never ran. Every real task
+        # name is a lowercase hyphenated word, so pin that shape here and fail
+        # before the subprocess starts.
+        pattern=r"^[a-z0-9][a-z0-9-]*$",
         description=(
             "Name of the task to run, as reported by trestle_task_list, "
-            "e.g. 'xlsx-to-oscal-profile'"
+            "e.g. 'xlsx-to-oscal-profile'. Lowercase letters, digits and "
+            "hyphens only."
         ),
     )
     config: dict[str, str] = Field(

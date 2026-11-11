@@ -17,9 +17,15 @@ class TrestleTaskListInput(BaseModel):
 
     task: Optional[str] = Field(
         default=None,
+        # Positional in `trestle task <name> -i`, so a leading "-" would be read
+        # as a flag and `trestle task --help -i` exits 0 with its usage text —
+        # reported as a described task that does not exist. Same shape as
+        # trestle_task_run's `task`.
+        pattern=r"^[a-z0-9][a-z0-9-]*$",
         description=(
             "Name of a single task to describe, e.g. 'csv-to-oscal-cd'. "
-            "Omit it to list every available task."
+            "Lowercase letters, digits and hyphens only. Omit it to list every "
+            "available task."
         ),
     )
     trestle_root: Optional[str] = Field(

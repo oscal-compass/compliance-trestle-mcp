@@ -4,6 +4,7 @@
 from unittest.mock import patch
 
 import pytest
+from pydantic import ValidationError
 
 from trestle_mcp.services.task import task_list
 
@@ -63,3 +64,31 @@ class TestTrestleTaskList:
             result = await task_list.trestle_task_list(task_list.TrestleTaskListInput())
             assert "❌" in result
             assert "not in a valid trestle root directory" in result
+
+
+class TestTaskNameValidation:
+    """Test suite for the shape required of the optional task name.
+
+    Same reasoning as trestle_task_run: the name is positional in
+    `trestle task <name> -i`, so `trestle task --help -i` would exit 0 with its
+    usage text and be reported as a described task.
+    """
+
+    @pytest.mark.parametrize(
+        "name", ["csv-to-oscal-cd", "xlsx-to-oscal-poam", "base", "pass-fail"]
+    )
+    def test_real_task_names_are_accepted(self, name):
+        """Test a real task name validates."""
+        assert task_list.TrestleTaskListInput(task=name).task == name
+
+    def test_omitting_the_task_is_still_allowed(self):
+        """Test the listing form, which has no task name, is unaffected."""
+        assert task_list.TrestleTaskListInput().task is None
+
+    @pytest.mark.parametrize(
+        "name", ["--help", "-h", "--list", "-l", "../../etc/passwd", "Foo", ""]
+    )
+    def test_names_that_are_not_task_names_are_rejected(self, name):
+        """Test a flag, a path or a wrong-cased name fails validation."""
+        with pytest.raises(ValidationError):
+            task_list.TrestleTaskListInput(task=name)

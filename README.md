@@ -151,12 +151,12 @@ full, so a config file carrying `--tool` is rejected instead of guessed at.
 
 | Value | Tools | `tools/list` chars | Meaning |
 |---|---:|---:|---|
-| `authoring` | 13 | 46,706 | The curated authoring lifecycle. **The default.** |
-| `core` | 12 | 39,032 | The top-level trestle commands |
+| `authoring` | 13 | 47,342 | The curated authoring lifecycle. **The default.** |
+| `core` | 12 | 39,668 | The top-level trestle commands |
 | `author` | 11 | 39,684 | Every `trestle author` subcommand wrapper |
 | `task` | 5 | 20,318 | Every `trestle task` wrapper, including the generic runner |
-| `all` | 28 | 99,032 | Everything a group can select |
-| `trestle_author_ssp_generate` | 1 | 4,628 | Any single tool, by its registered name |
+| `all` | 28 | 99,668 | Everything a group can select |
+| `trestle_author_ssp_generate` | 1 | 4,630 | Any single tool, by its registered name |
 
 The default is less than half the size of `all`, and selections combine, so you
 pay only for what you name. Measure any selection yourself with

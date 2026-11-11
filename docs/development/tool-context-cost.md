@@ -35,12 +35,12 @@ Measured on the tool set in this repository:
 
 | Selection | Tools | Characters | ~Tokens |
 |---|---:|---:|---:|
-| `core` | 12 | 39,032 | ~9,758 |
+| `core` | 12 | 39,668 | ~9,917 |
 | `author` | 11 | 39,684 | ~9,921 |
 | `task` | 5 | 20,318 | ~5,079 |
-| `authoring` (default) | 13 | 46,706 | ~11,676 |
-| `all` | 28 | 99,032 | ~24,758 |
-| `all,trestle_remove` | 29 | 101,795 | ~25,448 |
+| `authoring` (default) | 13 | 47,342 | ~11,835 |
+| `all` | 28 | 99,668 | ~24,917 |
+| `all,trestle_remove` | 29 | 102,431 | ~25,607 |
 
 The default, `authoring`, is **less than half** of `all`. That is the point of
 the selector: the whole trestle surface is available, but a session that only
@@ -81,6 +81,7 @@ come down.
 | `trestle_author_component_generate` | 3,069 |
 | `trestle_href` | 2,975 |
 | `trestle_merge` | 2,943 |
+| `trestle_init` | 2,787 |
 | `trestle_remove` | 2,762 |
 | `trestle_partial_object_validate` | 2,761 |
 | `trestle_author_catalog_generate` | 2,706 |
@@ -88,7 +89,6 @@ come down.
 | `trestle_task_list` | 2,579 |
 | `trestle_split` | 2,494 |
 | `trestle_describe` | 2,364 |
-| `trestle_init` | 2,151 |
 
 The descriptions are long on purpose: each one states when to reach for the tool
 and when not to, which is what keeps a model from calling `trestle_assemble`

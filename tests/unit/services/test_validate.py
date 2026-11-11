@@ -10,10 +10,12 @@ import json
 from pathlib import Path
 
 import pytest
+from trestle.common import const
 
 # A minimal, schema-valid POA&M. oscal_version must match the trestle build.
 from trestle.oscal import OSCAL_VERSION  # noqa: E402
 
+from trestle_mcp.libs.oscal_types import OscalModelType
 from trestle_mcp.libs.oscal_validate import (
     SUPPORTED_MODEL_TYPES,
     validate_oscal_file,
@@ -125,9 +127,27 @@ class TestValidateOscalFileLib:
         assert not res.valid
         assert res.model_type is None
 
-    def test_all_supported_types_listed(self):
+    def test_supported_types_are_the_installed_trestle_model_types(self):
+        """Test the validator covers every model type trestle defines.
+
+        The map used to be seven hardcoded entries, and `mapping-collection`
+        was left out when the csv-to-oscal-mc tool was added -- so the default
+        tool set could produce a model that the validate tool in the same
+        default set refused as an "Unsupported OSCAL root". Comparing against
+        trestle's own list is what stops that happening again for the next
+        model type trestle gains.
+        """
+        assert SUPPORTED_MODEL_TYPES == sorted(const.MODEL_TYPE_LIST)
         assert "plan-of-action-and-milestones" in SUPPORTED_MODEL_TYPES
-        assert len(SUPPORTED_MODEL_TYPES) == 7
+        assert "mapping-collection" in SUPPORTED_MODEL_TYPES
+
+    def test_the_tool_enum_matches_what_can_be_validated(self):
+        """Test OscalModelType and the validator agree.
+
+        The enum's docstring claims these are exactly the model types the CLI
+        and this validator accept. That claim was false for mapping-collection.
+        """
+        assert sorted(t.value for t in OscalModelType) == SUPPORTED_MODEL_TYPES
 
 
 class TestTrestleValidateTool:

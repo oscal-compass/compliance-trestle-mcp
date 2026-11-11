@@ -12,7 +12,14 @@ class OscalModelType(str, Enum):
 
     These are exactly the choices accepted by the `-t/--type` argument of
     `trestle create`, `trestle assemble`, `trestle replicate`, `trestle validate`
-    and `trestle version`.
+    and `trestle version`, and exactly what `trestle_validate` can check --
+    both are `trestle.common.const.MODEL_TYPE_LIST`, and
+    `tests/unit/services/test_validate.py` fails if this list drifts from it.
+
+    The claim about `trestle_validate` was false when `mapping-collection` was
+    added here: that tool's model map was written out by hand and had seven
+    entries, so the default tool set could produce a mapping collection and
+    then refuse to validate it. The map is derived from trestle now.
     """
 
     ASSESSMENT_PLAN = "assessment-plan"

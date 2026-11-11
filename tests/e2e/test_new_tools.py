@@ -445,6 +445,49 @@ async def test_an_unresolvable_control_id_is_dropped_silently(workspace):
 
 
 @pytest.mark.anyio
+async def test_a_generated_mapping_collection_validates(workspace):
+    """The default tool set can validate what the default tool set produces.
+
+    csv-to-oscal-mc and trestle_validate are both in the `authoring` preset,
+    and the validator's model map left out `mapping-collection`, so this chain
+    failed with "Unsupported OSCAL root". Both tools run from one client here,
+    which is the arrangement that made it a problem.
+    """
+    root = workspace["root"]
+
+    async with Client(build_server("authoring")) as client:
+        await call_tool(client, "trestle_init", {"mode": "local"})
+        for name in ("source", "target"):
+            await call_tool(
+                client,
+                "trestle_import",
+                {"file": workspace["catalog"].as_posix(), "output": name},
+            )
+
+        csv_copy = root / "mapping.csv"
+        shutil.copy(workspace["mapping_csv"], csv_copy)
+        await call_tool(
+            client,
+            "trestle_task_csv_to_oscal_mc",
+            {
+                "title": "Test Crosswalk",
+                "version": "1.0.0",
+                "csv_file": csv_copy.as_posix(),
+                "output_dir": "mapping-collections/test",
+            },
+        )
+
+        output = root / "mapping-collections" / "test" / "mapping-collection.json"
+        result = await call_tool(
+            client,
+            "trestle_validate",
+            {"file": output.as_posix(), "expected_model_type": "mapping-collection"},
+        )
+        assert "✅" in result
+        assert "mapping-collection" in result
+
+
+@pytest.mark.anyio
 async def test_generic_task_tools(workspace):
     """List the available tasks and run one through the generic runner."""
     root = workspace["root"]

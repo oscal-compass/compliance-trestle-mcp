@@ -15,13 +15,12 @@ that way. Instead we drive trestle's model classes directly:
 
 The model type is detected from the single top-level JSON/YAML key (the OSCAL
 root alias, e.g. ``plan-of-action-and-milestones``), so the same tool validates
-any of the seven top-level OSCAL models.
+every top-level OSCAL model the installed trestle defines.
 """
 
 from __future__ import annotations
 
 import argparse
-import importlib
 import json
 import logging
 from dataclasses import dataclass, field
@@ -30,22 +29,30 @@ from tempfile import TemporaryDirectory
 from typing import Optional
 
 from trestle.common import const
+from trestle.common.model_utils import ModelUtils
 from trestle.core.validator_factory import validator_factory
 
-# Root JSON/YAML alias -> (module, class name) for the seven top-level OSCAL
-# models. The alias is the single wrapper key at the top of an OSCAL document.
-ROOT_ALIAS_TO_MODEL: dict[str, tuple[str, str]] = {
-    "catalog": ("trestle.oscal.catalog", "Catalog"),
-    "profile": ("trestle.oscal.profile", "Profile"),
-    "component-definition": ("trestle.oscal.component", "ComponentDefinition"),
-    "system-security-plan": ("trestle.oscal.ssp", "SystemSecurityPlan"),
-    "assessment-plan": ("trestle.oscal.assessment_plan", "AssessmentPlan"),
-    "assessment-results": ("trestle.oscal.assessment_results", "AssessmentResults"),
-    "plan-of-action-and-milestones": (
-        "trestle.oscal.poam",
-        "PlanOfActionAndMilestones",
-    ),
-}
+
+def _root_alias_to_model() -> dict[str, type]:
+    """Map each OSCAL root alias to the trestle class that parses it.
+
+    Taken from trestle's own `MODEL_TYPE_TO_MODEL_MODULE`, not written out here.
+    A hardcoded list of seven silently left out `mapping-collection` when this
+    server gained the csv-to-oscal-mc tool, so the default tool set could
+    produce a model that the validate tool in the same default set rejected as
+    an "Unsupported OSCAL root". Deriving the map means a model type trestle
+    gains is a model type this validates.
+    """
+    mapping: dict[str, type] = {}
+    for alias, module_name in const.MODEL_TYPE_TO_MODEL_MODULE.items():
+        model_cls, _ = ModelUtils.get_root_model(module_name)
+        mapping[alias] = model_cls
+    return mapping
+
+
+#: Root JSON/YAML alias -> the trestle model class for it. The alias is the
+#: single wrapper key at the top of an OSCAL document.
+ROOT_ALIAS_TO_MODEL: dict[str, type] = _root_alias_to_model()
 
 SUPPORTED_MODEL_TYPES = sorted(ROOT_ALIAS_TO_MODEL)
 
@@ -167,8 +174,7 @@ def validate_oscal_file(
             ],
         )
 
-    module_name, class_name = ROOT_ALIAS_TO_MODEL[alias]
-    model_cls = getattr(importlib.import_module(module_name), class_name)
+    model_cls = ROOT_ALIAS_TO_MODEL[alias]
 
     result = ValidationResult(valid=True, model_type=alias)
 

@@ -1,6 +1,6 @@
 """Trestle OSCAL validation service.
 
-Validates a standalone OSCAL document (any of the seven top-level models) using
+Validates a standalone OSCAL document (any top-level OSCAL model) using
 the trestle Python library directly — see :mod:`trestle_mcp.libs.oscal_validate`
 for why this does not use the trestle CLI.
 """
@@ -56,7 +56,8 @@ async def trestle_validate(params: TrestleValidateInput) -> str:
     It detects the model type from the file's single top-level wrapper key, so
     it validates any top-level OSCAL model: catalog, profile,
     component-definition, system-security-plan, assessment-plan,
-    assessment-results, or plan-of-action-and-milestones.
+    assessment-results, mapping-collection, or plan-of-action-and-milestones --
+    the same list as `model_type` elsewhere in this server.
 
     Unlike ``trestle validate`` on the CLI, this works on a standalone file that
     is not part of a trestle workspace — for example a POA&M JSON produced by an

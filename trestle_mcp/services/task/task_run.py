@@ -105,7 +105,12 @@ async def trestle_task_run(params: TrestleTaskRunInput) -> str:
         Path(config_path).unlink(missing_ok=True)
 
     if result["success"]:
-        output = command_output(result) or result["stderr"].strip()
+        # `command_output` already falls back to stderr when stdout is empty,
+        # which is the case a task that only logs used to need. Keeping an
+        # `or result["stderr"]` after it was dead code: the helper returns a
+        # non-empty warning string whenever stderr has anything, and when both
+        # streams are empty the fallback is empty too.
+        output = command_output(result)
         return (
             f"✅ Trestle task completed successfully\n\nTask: {params.task}\n\n{output}"
         )

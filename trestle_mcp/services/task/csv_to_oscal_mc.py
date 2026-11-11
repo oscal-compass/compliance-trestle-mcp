@@ -64,8 +64,13 @@ async def trestle_task_csv_to_oscal_mc(params: TrestleTaskCsvToOscalMcInput) -> 
     Required CSV columns:
     - $$Source_Resource, $$Target_Resource: for each side, a path to a catalog
       JSON file or an href to a profile. Both sides are loaded and every id in
-      the ref lists is looked up in them, so a typo in a control id fails the
-      run rather than producing a dangling mapping.
+      the ref lists is looked up in them. **An id that is not found is dropped
+      without a warning**, and the row is still written with whatever ids did
+      resolve: `ac-1 ac-99-typo` on one side produces a map naming `ac-1` only,
+      and the run reports success. It fails only when nothing in a row's list
+      resolves at all. So a successful run does not mean every id in the CSV
+      made it into the output -- check the id-refs in mapping-collection.json
+      against the CSV if the mapping has to be complete.
     - $$Map_Source_Id_Ref_List, $$Map_Target_Id_Ref_List: whitespace-separated
       control ids, or statement ids such as `ac-1_smt.a`. Several ids on one
       side are what makes a mapping many-to-many.

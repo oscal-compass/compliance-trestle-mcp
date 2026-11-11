@@ -393,6 +393,58 @@ async def test_a_recovered_warning_reaches_the_caller(workspace):
 
 
 @pytest.mark.anyio
+async def test_an_unresolvable_control_id_is_dropped_silently(workspace):
+    """An id that does not resolve is dropped, and the run still succeeds.
+
+    This pins the behaviour the tool description used to get wrong: it claimed a
+    typo in a control id failed the run. trestle's get_id_list keeps only the
+    ids it can resolve and warns about none of them, so the row is written with
+    what was left and the caller is told it worked. There is no option to make
+    trestle strict here, which is why the docstring has to say so.
+    """
+    root = workspace["root"]
+
+    async with Client(build_server("authoring")) as client:
+        await call_tool(client, "trestle_init", {"mode": "local"})
+        for name in ("source", "target"):
+            await call_tool(
+                client,
+                "trestle_import",
+                {"file": workspace["catalog"].as_posix(), "output": name},
+            )
+
+        rows = workspace["mapping_csv"].read_text(encoding="utf-8").splitlines()
+        csv_copy = root / "typo.csv"
+        csv_copy.write_text(
+            "\n".join(
+                row.replace(",ac-1,ac-1,", ",ac-1,ac-1 ac-99-typo,") for row in rows
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        result = await call_tool(
+            client,
+            "trestle_task_csv_to_oscal_mc",
+            {
+                "title": "Test Crosswalk",
+                "version": "1.0.0",
+                "csv_file": csv_copy.as_posix(),
+                "output_dir": "mapping-collections/typo",
+            },
+        )
+
+        assert "✅" in result
+
+        output = root / "mapping-collections" / "typo" / "mapping-collection.json"
+        maps = json.loads(output.read_text())["mapping-collection"]["mappings"][0][
+            "maps"
+        ]
+        equivalent = next(e for e in maps if e["relationship"] == "equivalent")
+        assert [item["id-ref"] for item in equivalent["targets"]] == ["ac-1"]
+
+
+@pytest.mark.anyio
 async def test_generic_task_tools(workspace):
     """List the available tasks and run one through the generic runner."""
     root = workspace["root"]

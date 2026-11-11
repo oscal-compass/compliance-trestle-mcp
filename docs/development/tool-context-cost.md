@@ -5,14 +5,14 @@ window on every session, before the model has done anything. That result carries
 each tool's name, title, description and input schema, so the size of the
 selection is a fixed cost paid by every conversation with the server attached —
 which is why this server lets you choose how much of the trestle surface to
-expose (see [Choosing which tools are exposed](../README.md#choosing-which-tools-are-exposed)).
+expose (see [Choosing which tools are exposed](../../README.md#choosing-which-tools-are-exposed)).
 
 This page records what each selection currently costs, and how to measure it
 again.
 
 ## Measuring it
 
-[`scripts/tool_context_cost.py`](../scripts/tool_context_cost.py) builds a
+[`scripts/tool_context_cost.py`](../../scripts/tool_context_cost.py) builds a
 server for each selection and measures the JSON it would actually return, rather
 than estimating from the source:
 

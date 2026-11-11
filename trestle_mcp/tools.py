@@ -3,7 +3,7 @@
 Every tool an MCP server registers costs the caller context: the client loads
 each tool's name, input schema and description into the model's context window
 on every session. This server covers the trestle command surface an agent should
-drive -- see ``docs/command-specs-development.md`` for what is deliberately left
+drive -- see ``docs/development/README.md`` for what is deliberately left
 out -- but lets the caller choose how much of it to expose, so a session carries
 the part it will actually call and the rest is one configuration value away.
 ``scripts/tool_context_cost.py`` measures what each selection costs.

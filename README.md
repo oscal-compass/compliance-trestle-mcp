@@ -84,7 +84,7 @@ Those 13 are the default selection. The server implements 29 tools in all: 28
 that groups can select, plus `trestle_remove`, which is registered only when
 named explicitly. See
 [Choosing which tools are exposed](#choosing-which-tools-are-exposed), and
-[Commands deliberately not covered](docs/command-specs-development.md#commands-deliberately-not-covered)
+[Commands deliberately not covered](docs/development/README.md#commands-deliberately-not-covered)
 for the parts of the trestle CLI that have no tool and why.
 
 #### Step 3: Execute a Tool (e.g., `trestle_init`)
@@ -153,7 +153,7 @@ starting up with the tool quietly missing.
 The default is less than half the size of `all`, and selections combine, so you
 pay only for what you name. Measure any selection yourself with
 `python scripts/tool_context_cost.py`; see
-[What each tool selection costs in context](docs/tool-context-cost.md) for the
+[What each tool selection costs in context](docs/development/tool-context-cost.md) for the
 current figures per selection and per tool, and for how to narrow the default
 further.
 
@@ -262,10 +262,10 @@ validate their arguments and document the input format.
 The signing and provenance commands (`sign`, `verify`, `generate-manifest`,
 `sign-manifest`, `verify-manifest`, `canonicalize`), the `beta` feature-flag
 command, and the markdown governance commands (`author docs`, `author folders`,
-`author headers`, `author jinja`) have no tools here. See the design notes in
-[developer documents](docs/command-specs-development.md).
+`author headers`, `author jinja`) have no tools here. The reasons are recorded
+in the [development guide](docs/development/README.md#commands-deliberately-not-covered).
 
-For advanced use, refer to official [compliance-trestle docs](https://oscal-compass.dev/compliance-trestle/latest/) or [developer documents](docs/command-specs-development.md) in this repo.
+For advanced use, refer to the official [compliance-trestle docs](https://oscal-compass.dev/compliance-trestle/latest/); to add or change a tool here, see the [development guide](docs/development/README.md).
 
 ## Troubleshooting & Help
 

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Tests that the trestle command surface is either covered or documented.
 
-The README and the development guide both claim a complete picture: the tools
-cover the commands an agent should drive, and the guide's "Commands
-deliberately not covered" section explains the rest. Nothing enforced that, so a
-command could be neither — `trestle remove` was, for a while.
+The README and the development guide both claim a complete picture: the tools cover the
+commands an agent should drive, and the guide's "Commands deliberately not
+covered" section explains the rest. Nothing enforced that, so a command could be
+neither — `trestle remove` was, for a while.
 
 These tests close the gap from both ends. Coverage is derived from the command
 line each tool actually builds, not from a list maintained by hand, so adding a
@@ -27,7 +27,12 @@ from trestle.core.commands.author.command import AuthorCmd
 
 from trestle_mcp import tools
 
-GUIDE = Path(__file__).resolve().parents[2] / "docs" / "command-specs-development.md"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+GUIDE = REPO_ROOT / "docs" / "development" / "README.md"
+
+#: Repo-relative path, for failure messages: GUIDE.name alone is "README.md",
+#: which reads as the root README rather than the development guide.
+GUIDE_PATH = GUIDE.relative_to(REPO_ROOT).as_posix()
 
 #: The one section that accounts for a command having no tool of its own.
 #: "Commands behind an explicit opt-in" deliberately does NOT appear here: the
@@ -114,7 +119,7 @@ def exempted_names() -> set[str]:
             text,
             re.M | re.S,
         )
-        assert match, f"{GUIDE.name} has no '{heading}' section"
+        assert match, f"{GUIDE_PATH} has no '{heading}' section"
         for quoted in re.findall(r"`([^`]+)`", match.group(1)):
             # Strip a leading "trestle " so `trestle validate` matches "validate".
             exempted.add(re.sub(r"^trestle\s+", "", quoted).strip())
@@ -162,7 +167,7 @@ class TestCommandCoverage:
 
         assert not unaccounted, (
             "these trestle commands have no tool and are not listed under "
-            f"{EXEMPTING_HEADINGS} in {GUIDE.name}: {sorted(unaccounted)}"
+            f"{EXEMPTING_HEADINGS} in {GUIDE_PATH}: {sorted(unaccounted)}"
         )
 
     def test_every_tool_maps_to_an_installed_command(self):

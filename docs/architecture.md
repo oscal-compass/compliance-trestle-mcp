@@ -74,7 +74,7 @@ picks out; FastMCP derives each tool's input schema from the service function's
 `params` annotation and its description from the docstring. Which tools are
 registered is decided by `--tools` or `TRESTLE_MCP_TOOLS` — see
 [Choosing which tools are exposed](../README.md#choosing-which-tools-are-exposed)
-and [what each selection costs](tool-context-cost.md).
+and [what each selection costs](development/tool-context-cost.md).
 
 All subprocess execution is centralized in `libs/trestle.py`, which locates the
 `trestle` binary and applies a timeout: `DEFAULT_TIMEOUT` (60s) for commands that
@@ -128,7 +128,7 @@ selection, and `TOOL_SPECS` in
 [`trestle_mcp/tools.py`](../trestle_mcp/tools.py) for all of them. For the
 trestle commands that deliberately have no tool — signing and provenance,
 `beta`, and the non-OSCAL `author` document commands — see
-[Commands deliberately not covered](command-specs-development.md#commands-deliberately-not-covered).
+[Commands deliberately not covered](development/README.md#commands-deliberately-not-covered).
 
 ## Data Flow
 

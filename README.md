@@ -37,7 +37,7 @@ Choose the option that best fits your workflow.
 
 2. Open OpenCode, confirm the `trestle` tools are listed, and execute as needed.
 
-    https://github.com/user-attachments/assets/86c0abce-7285-4539-a7ae-90bbc1d2a66c
+    https://github.com/user-attachments/assets/a85b0927-4981-41d1-9a03-f22becb7a6e2
 
 ---
 

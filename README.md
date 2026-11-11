@@ -80,8 +80,12 @@ Sample output (tools available):
 └─────────┴───────────────────────────────────┴───────────────────────────────────────────────────────────────────┘
 ```
 
-Those 13 are the default selection. The server implements 28 tools in all — see
-[Choosing which tools are exposed](#choosing-which-tools-are-exposed).
+Those 13 are the default selection. The server implements 29 tools in all: 28
+that groups can select, plus `trestle_remove`, which is registered only when
+named explicitly. See
+[Choosing which tools are exposed](#choosing-which-tools-are-exposed), and
+[Commands deliberately not covered](docs/command-specs-development.md#commands-deliberately-not-covered)
+for the parts of the trestle CLI that have no tool and why.
 
 #### Step 3: Execute a Tool (e.g., `trestle_init`)
 
@@ -126,9 +130,10 @@ assessment-results  component-definitions  profiles
 
 Every tool a server registers costs the caller context: an MCP client loads each
 tool's name, input schema and description into the model's context window on
-every session. This server implements the whole trestle command surface, but
-exposes only the authoring lifecycle unless you ask for more, so the common case
-stays cheap and the rest is one setting away.
+every session. This server covers the trestle command surface an agent should
+drive, but exposes only the authoring lifecycle unless you ask for more, so a
+session carries the part of that surface it will actually call and the rest is
+one setting away.
 
 The selection is a comma-separated list of group names and/or individual tool
 names, read from the `--tools` flag or the `TRESTLE_MCP_TOOLS` environment
@@ -136,18 +141,29 @@ variable. The flag wins over the environment variable. Naming something that
 does not exist fails at startup with the list of valid names, rather than
 starting up with the tool quietly missing.
 
-| Value | Tools | Meaning |
-|---|---|---|
-| `authoring` | 13 | The curated authoring lifecycle. **The default.** |
-| `core` | 12 | The top-level trestle commands |
-| `author` | 11 | Every `trestle author` subcommand wrapper |
-| `task` | 5 | Every `trestle task` wrapper, including the generic runner |
-| `all` | 28 | Everything |
-| `trestle_author_ssp_generate` | 1 | Any single tool, by its registered name |
+| Value | Tools | `tools/list` chars | Meaning |
+|---|---:|---:|---|
+| `authoring` | 13 | 46,137 | The curated authoring lifecycle. **The default.** |
+| `core` | 12 | 36,381 | The top-level trestle commands |
+| `author` | 11 | 39,695 | Every `trestle author` subcommand wrapper |
+| `task` | 5 | 19,848 | Every `trestle task` wrapper, including the generic runner |
+| `all` | 28 | 95,922 | Everything a group can select |
+| `trestle_author_ssp_generate` | 1 | 4,629 | Any single tool, by its registered name |
+
+The default is less than half the size of `all`, and selections combine, so you
+pay only for what you name. Measure any selection yourself with
+`python scripts/tool_context_cost.py`; see
+[What each tool selection costs in context](docs/tool-context-cost.md) for the
+current figures per selection and per tool, and for how to narrow the default
+further.
 
 `core`, `author` and `task` mirror the trestle CLI's own command structure, so
 which tool is in which group follows from the CLI. `authoring` is the one
 curated preset that cuts across them.
+
+**Tools no group selects.** `trestle_remove` deletes an element from a model in
+place, with no backup, so no group selects it — `all` included. It is registered
+only when the selection names it exactly, e.g. `authoring,trestle_remove`.
 
 **Default (the authoring lifecycle) — no configuration needed:**
 

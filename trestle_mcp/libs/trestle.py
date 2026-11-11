@@ -138,9 +138,39 @@ async def run_trestle_command(
     args, trestle_root = absolute_trestle_root(args)
     trestle_bin = find_trestle_bin()
     cmd = [trestle_bin] + args
-    workdir = cwd or trestle_root or os.getcwd()
+    workdir = _working_directory(cwd, trestle_root)
 
     return await asyncio.to_thread(_run_blocking, cmd, workdir, timeout)
+
+
+def _working_directory(cwd: Optional[str], trestle_root: Optional[str]) -> str:
+    """Choose the directory to run in, never one that does not exist.
+
+    A directory that is not there would make `subprocess.run` raise
+    `FileNotFoundError` before trestle starts, and the generic handler reports
+    that as "Error executing trestle: [Errno 2] No such file or directory",
+    which reads like the trestle binary is missing rather than like the
+    workspace path was wrong. A typo in `trestle_root` is the most ordinary
+    mistake there is, so the message matters.
+
+    Skipping a missing directory hands the problem to trestle, which says what
+    is actually wrong: "Given directory /x/ws is not in a valid trestle root
+    directory", or for init, "Given directory /x/ws does not exist or is not a
+    directory". The path still reaches it, because `--trestle-root` is passed
+    as an argument either way.
+
+    Args:
+        cwd: Directory the caller asked for, if any. Only `merge` sets this.
+        trestle_root: The absolute `--trestle-root` from the arguments, if any.
+
+    Returns:
+        The first of those that is an existing directory, else this process's
+        working directory.
+    """
+    for candidate in (cwd, trestle_root):
+        if candidate and os.path.isdir(candidate):
+            return candidate
+    return os.getcwd()
 
 
 def _run_blocking(cmd: list[str], workdir: str, timeout: int) -> dict:

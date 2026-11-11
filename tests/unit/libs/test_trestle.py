@@ -119,12 +119,14 @@ class TestRunTrestleCommand:
                 assert "Test error" in result["stderr"]
                 assert result["returncode"] == -1
 
-    def test_command_with_custom_cwd(self):
+    def test_command_with_custom_cwd(self, tmp_path):
         """Test command execution with custom working directory."""
         mock_result = MagicMock()
         mock_result.returncode = 0
         mock_result.stdout = "Success"
         mock_result.stderr = ""
+        custom = tmp_path / "custom" / "path"
+        custom.mkdir(parents=True)
 
         with patch(
             "trestle_mcp.libs.trestle.subprocess.run", return_value=mock_result
@@ -132,12 +134,12 @@ class TestRunTrestleCommand:
             with patch(
                 "trestle_mcp.libs.trestle.find_trestle_bin", return_value="trestle"
             ):
-                result = run_trestle_command(["init", "--local"], cwd="/custom/path")
+                result = run_trestle_command(["init", "--local"], cwd=str(custom))
 
                 assert result["success"] is True
                 mock_run.assert_called_once()
                 call_kwargs = mock_run.call_args[1]
-                assert call_kwargs["cwd"] == "/custom/path"
+                assert call_kwargs["cwd"] == str(custom)
 
     def test_default_timeout_is_applied(self):
         """Test the default timeout is handed to subprocess.run."""
@@ -215,44 +217,99 @@ class TestTrestleRootIsTheWorkingDirectory:
                 run_trestle_command(args, **kwargs)
         return mock_run.call_args
 
-    def test_absolute_root_becomes_the_cwd(self):
+    def test_absolute_root_becomes_the_cwd(self, tmp_path):
         """Test the command runs inside the workspace it was given."""
+        root = tmp_path / "ws"
+        root.mkdir()
         call = self._run(
-            ["split", "--file", "catalogs/c/catalog.json", "--trestle-root", "/ws"]
+            [
+                "split",
+                "--file",
+                "catalogs/c/catalog.json",
+                "--trestle-root",
+                str(root),
+            ]
         )
-        assert call[1]["cwd"] == "/ws"
+        assert call[1]["cwd"] == str(root)
 
-    def test_relative_root_is_made_absolute_in_both_places(self):
+    def test_relative_root_is_made_absolute_in_both_places(self, tmp_path):
         """Test a relative root is resolved once, for the cwd and the flag.
 
         The flag has to carry the absolute path too: the command runs *in* that
         directory, so a relative `--trestle-root ws` would resolve to `ws/ws`.
         """
-        with patch("trestle_mcp.libs.trestle.os.getcwd", return_value="/start"):
+        (tmp_path / "ws").mkdir()
+        with patch("trestle_mcp.libs.trestle.os.getcwd", return_value=str(tmp_path)):
             call = self._run(["describe", "--file", "f.json", "--trestle-root", "ws"])
         args = call[0][0][1:]
-        assert args[args.index("--trestle-root") + 1] == "/start/ws"
-        assert call[1]["cwd"] == "/start/ws"
+        assert args[args.index("--trestle-root") + 1] == str(tmp_path / "ws")
+        assert call[1]["cwd"] == str(tmp_path / "ws")
 
-    def test_joined_flag_form_is_handled_too(self):
+    def test_joined_flag_form_is_handled_too(self, tmp_path):
         """Test `--trestle-root=/ws` is resolved like the two-token form."""
-        call = self._run(["describe", "--file", "f.json", "--trestle-root=/ws"])
-        assert call[1]["cwd"] == "/ws"
-        assert "--trestle-root=/ws" in call[0][0]
+        root = tmp_path / "ws"
+        root.mkdir()
+        call = self._run(["describe", "--file", "f.json", f"--trestle-root={root}"])
+        assert call[1]["cwd"] == str(root)
+        assert f"--trestle-root={root}" in call[0][0]
 
-    def test_an_explicit_cwd_still_wins(self):
+    def test_an_explicit_cwd_still_wins(self, tmp_path):
         """Test merge can override the root with the model directory."""
+        root = tmp_path / "ws"
+        model_dir = root / "catalogs" / "c"
+        model_dir.mkdir(parents=True)
         call = self._run(
-            ["merge", "--element", "catalog.metadata", "--trestle-root", "/ws"],
-            cwd="/ws/catalogs/c",
+            ["merge", "--element", "catalog.metadata", "--trestle-root", str(root)],
+            cwd=str(model_dir),
         )
-        assert call[1]["cwd"] == "/ws/catalogs/c"
+        assert call[1]["cwd"] == str(model_dir)
 
     def test_no_root_falls_back_to_the_process_directory(self):
         """Test behaviour is unchanged when no root is given."""
         with patch("trestle_mcp.libs.trestle.os.getcwd", return_value="/start"):
             call = self._run(["version"])
         assert call[1]["cwd"] == "/start"
+
+    def test_a_missing_root_is_not_used_as_the_cwd(self, tmp_path):
+        """Test a root that does not exist is left for trestle to report.
+
+        Used as the cwd, it makes subprocess.run raise FileNotFoundError before
+        trestle starts, and the generic handler turns that into "Error
+        executing trestle: [Errno 2] No such file or directory" -- which reads
+        as a missing trestle binary, not as a mistyped workspace path. Skipped,
+        trestle gets the path as an argument and says "Given directory ... is
+        not in a valid trestle root directory".
+        """
+        missing = str(tmp_path / "not-there")
+        with patch("trestle_mcp.libs.trestle.os.getcwd", return_value="/start"):
+            call = self._run(
+                ["describe", "--file", "f.json", "--trestle-root", missing]
+            )
+        assert call[1]["cwd"] == "/start"
+        args = call[0][0][1:]
+        assert args[args.index("--trestle-root") + 1] == missing
+
+    def test_a_missing_explicit_cwd_is_not_used_either(self, tmp_path):
+        """Test the same for merge's model directory.
+
+        merge passes its own cwd, and a model_dir that is not there gave the
+        same misleading error.
+        """
+        root = tmp_path / "ws"
+        root.mkdir()
+        missing = str(root / "catalogs" / "nope")
+        call = self._run(
+            ["merge", "--element", "catalog.metadata", "--trestle-root", str(root)],
+            cwd=missing,
+        )
+        assert call[1]["cwd"] == str(root)
+
+    def test_an_existing_root_is_still_used(self, tmp_path):
+        """Test the guard does not break the normal case."""
+        root = tmp_path / "ws"
+        root.mkdir()
+        call = self._run(["describe", "--file", "f.json", "--trestle-root", str(root)])
+        assert call[1]["cwd"] == str(root)
 
 
 class TestTheEventLoopStaysFree:

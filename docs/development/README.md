@@ -184,6 +184,17 @@ threw the warning away, leaving nothing to indicate the output is missing
 something. `command_output` appends stderr under a heading, and appends nothing
 when stderr is empty, which is the normal case for a successful command.
 
+`task_list` is the one exception, and it has to stay one. trestle routes INFO
+to stdout and WARNING and above to stderr, so `trestle task --list` and
+`--info` are on stdout — and what their stderr carries is a warning that is
+always wrong here, because asking for help text means passing no `--config`
+and trestle then warns that the config has no section for the task. Reported,
+it tells the caller its workspace is broken every time it reads a task's help.
+On the failure path, use `result["stderr"]` like every other service:
+`command_output` is for the success path (its own docstring says so), and
+through it an error reads "Error: ⚠️ trestle also reported: …", which presents
+the only thing that went wrong as a footnote.
+
 **Timeouts.** `run_trestle_command` applies `DEFAULT_TIMEOUT` (60s). Pass
 `timeout=LONG_TIMEOUT` (600s) for commands that fetch remote content, resolve a
 profile or walk a whole catalog. Sixteen tools do, and the list lives in

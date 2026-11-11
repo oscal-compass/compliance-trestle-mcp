@@ -20,13 +20,16 @@ class TestTrestleTaskList:
         with patch(MOCK_RUN_MODULE) as mock_run:
             mock_run.return_value = {
                 "success": True,
-                "stdout": "",
-                "stderr": "Available tasks:\n    csv-to-oscal-cd",
+                # trestle's logger sends INFO to stdout and WARNING and above to
+                # stderr, and `trestle task --list` is INFO. This fixture used
+                # to put the list on stderr, which is not what the CLI does --
+                # checked with `trestle task -l 2>/dev/null`, which prints the
+                # whole list, and `2>&1 >/dev/null`, which prints nothing.
+                "stdout": "Available tasks:\n    csv-to-oscal-cd",
+                "stderr": "",
                 "returncode": 0,
             }
             result = await task_list.trestle_task_list(task_list.TrestleTaskListInput())
-            # trestle logs the list to stderr, so a successful run can have
-            # empty stdout and the body must still be reported
             assert "✅" in result and "csv-to-oscal-cd" in result
             assert mock_run.call_args[0][0] == ["task", "--list"]
 
@@ -92,3 +95,76 @@ class TestTaskNameValidation:
         """Test a flag, a path or a wrong-cased name fails validation."""
         with pytest.raises(ValidationError):
             task_list.TrestleTaskListInput(task=name)
+
+
+class TestTaskListOutputHandling:
+    """Test suite for what reaches the caller, on both paths.
+
+    This is the one service that does not use `command_output`. trestle sends
+    INFO to stdout and WARNING and above to stderr, and `--list` / `--info` are
+    INFO, so stdout is the whole answer. stderr here carries a warning that is
+    always spurious: asking for help text means passing no `--config`, and
+    trestle then warns that the config has no section for the task.
+    """
+
+    CONFIG_WARNING = (
+        "trestle.core.commands.task:103 WARNING: Config file was not configured "
+        'with the appropriate section for the task: "[task.csv-to-oscal-mc]"'
+    )
+
+    @pytest.mark.asyncio
+    async def test_the_spurious_config_warning_is_not_reported(self):
+        """Test reading a task's help does not claim the config is broken.
+
+        Carried through, this told the caller its workspace was misconfigured
+        every single time, and sends an agent off to edit .trestle/config.ini.
+        """
+        with patch("trestle_mcp.services.task.task_list.run_trestle_command") as run:
+            run.return_value = {
+                "success": True,
+                "stdout": "Help information for csv-to-oscal-mc task.\n",
+                "stderr": self.CONFIG_WARNING,
+                "returncode": 0,
+            }
+            result = await task_list.trestle_task_list(
+                task_list.TrestleTaskListInput(task="csv-to-oscal-mc")
+            )
+
+            assert "✅" in result
+            assert "Help information for csv-to-oscal-mc task." in result
+            assert "Config file was not configured" not in result
+            assert "also reported" not in result
+
+    @pytest.mark.asyncio
+    async def test_a_failure_reports_stderr_as_the_error(self):
+        """Test the error is the error, not an aside.
+
+        Built with `command_output` this read "Error: ⚠️ trestle also reported:
+        ...", which presents the only thing that went wrong as a footnote. The
+        other 27 services use stderr directly on failure.
+        """
+        with patch("trestle_mcp.services.task.task_list.run_trestle_command") as run:
+            run.return_value = {
+                "success": False,
+                "stdout": "",
+                "stderr": "ERROR: Given directory /x is not in a valid trestle root directory",
+                "returncode": 1,
+            }
+            result = await task_list.trestle_task_list(task_list.TrestleTaskListInput())
+
+            assert "❌" in result
+            assert "not in a valid trestle root directory" in result
+            assert "also reported" not in result
+
+    @pytest.mark.asyncio
+    async def test_empty_output_is_labelled(self):
+        """Test a silent success does not return a bare heading."""
+        with patch("trestle_mcp.services.task.task_list.run_trestle_command") as run:
+            run.return_value = {
+                "success": True,
+                "stdout": "",
+                "stderr": "",
+                "returncode": 0,
+            }
+            result = await task_list.trestle_task_list(task_list.TrestleTaskListInput())
+            assert "(no output)" in result

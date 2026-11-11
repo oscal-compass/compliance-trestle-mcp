@@ -7,7 +7,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from trestle_mcp.libs.trestle import command_output, run_trestle_command
+from trestle_mcp.libs.trestle import run_trestle_command
 
 
 class TrestleTaskListInput(BaseModel):
@@ -79,12 +79,23 @@ async def trestle_task_list(params: TrestleTaskListInput) -> str:
 
     result = await run_trestle_command(args)
 
-    # `trestle task` writes both the list and the per-task help through its
-    # logger, which goes to stderr, so a successful run can have empty stdout.
-    body = command_output(result) or "(no output)"
-
     if result["success"]:
+        # The one service that does not build its output with `command_output`.
+        # trestle routes INFO to stdout and WARNING and above to stderr, and
+        # both `--list` and `--info` are INFO, so stdout already holds the whole
+        # answer. What stderr holds is a warning that is always wrong here:
+        # `--info` only asks for help text, so this service passes no
+        # `--config`, and trestle then warns "Config file was not configured
+        # with the appropriate section for the task". Carrying that through
+        # tells the caller its workspace is misconfigured every time it reads a
+        # task's help, and sends an agent off to edit .trestle/config.ini.
+        body = result["stdout"].strip() or "(no output)"
         subject = f"Task info: {params.task}" if params.task else "Available tasks"
         return f"✅ {subject}\n\n{body}"
-    else:
-        return f"❌ Failed to list trestle tasks\n\nError: {body}"
+
+    # On failure stderr is the error, not an aside -- same as the other 27
+    # services. Through `command_output` it came out as
+    # "Error: ⚠️ trestle also reported: ...", which presents the only thing
+    # that went wrong as a footnote.
+    error = result["stderr"].strip() or "(no output)"
+    return f"❌ Failed to list trestle tasks\n\nError: {error}"

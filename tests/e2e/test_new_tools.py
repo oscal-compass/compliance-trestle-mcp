@@ -19,6 +19,17 @@ from trestle_mcp.main import build_server
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 
+#: Workspace name the control source must be imported under.
+#:
+#: The Profile_Source column of tests/data/task/csv-to-oscal-cd/components.csv
+#: is `trestle://catalogs/nist-sample/catalog.json`. component-generate resolves
+#: that href, so the catalog has to exist in the workspace under this name. It
+#: is a trestle:// href rather than a URL on purpose: the fixture used to point
+#: at the NIST SP 800-53 rev5 catalog on raw.githubusercontent.com, which made
+#: this suite download ~10 MB from a third party on every run and fail whenever
+#: that host was unreachable.
+CONTROL_SOURCE_NAME = "nist-sample"
+
 
 async def call_tool(client: Client, name: str, params: Dict[str, Any]) -> str:
     """Call a tool and return its text result."""
@@ -238,6 +249,18 @@ async def test_component_definition_round_trip(workspace):
     async with Client(build_server("authoring")) as client:
         await call_tool(client, "trestle_init", {"mode": "local"})
 
+        # component-generate resolves each rule's Profile_Source, so the
+        # catalog the CSV names has to be in the workspace first. See
+        # CONTROL_SOURCE_NAME.
+        assert "✅" in await call_tool(
+            client,
+            "trestle_import",
+            {
+                "file": workspace["catalog"].as_posix(),
+                "output": CONTROL_SOURCE_NAME,
+            },
+        )
+
         result = await call_tool(
             client,
             "trestle_task_csv_to_oscal_cd",
@@ -260,7 +283,7 @@ async def test_component_definition_round_trip(workspace):
         )
         assert "✅" in result
         markdowns = list((root / "md_comp").rglob("*.md"))
-        assert {path.name for path in markdowns} == {"ac-3.md", "au-2.md"}
+        assert {path.name for path in markdowns} == {"ac-1.md", "ac-2.md"}
 
         # assembling to a new name needs the source name as well
         result = await call_tool(

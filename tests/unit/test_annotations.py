@@ -19,6 +19,7 @@ from trestle_mcp import tools
 
 #: Tools whose successful run can replace or remove existing content.
 DESTRUCTIVE = {
+    "trestle_init": "re-copies .trestle/config.ini over the operator's task config",
     "trestle_remove": "deletes an element from a model, with no backup",
     "trestle_assemble": "writes dist/<name>.json over any existing one",
     "trestle_split": "moves an element out of the model file into its own file",
@@ -44,7 +45,6 @@ DESTRUCTIVE = {
 #: Tools that only add, or only read. Each refusal below was checked by running
 #: the command twice against the real CLI.
 ADDITIVE = {
-    "trestle_init": "creates the workspace layout; nothing to replace",
     "trestle_import": "refuses: 'Cannot import because file ... already exists'",
     "trestle_create": "refuses: 'OSCAL file to be created here ... exists'",
     "trestle_replicate": "refuses: 'OSCAL file to be replicated here ... exists'",

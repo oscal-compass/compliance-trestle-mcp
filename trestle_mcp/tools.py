@@ -135,7 +135,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         group="core",
         input_model=services.init.TrestleInitInput,
         handler=services.init.trestle_init,
-        annotations=_annotations(idempotent=True),
+        annotations=_annotations(destructive=True),
         presets=_AUTHORING,
     ),
     ToolSpec(

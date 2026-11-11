@@ -585,3 +585,33 @@ async def test_remove_deletes_an_element_and_is_opt_in(workspace):
         )
         assert "❌" in result
         assert "catalog.nonexistent" in result
+
+
+@pytest.mark.anyio
+async def test_init_overwrites_an_existing_task_config(workspace):
+    """A second trestle_init replaces .trestle/config.ini and says it succeeded.
+
+    This is why `trestle_init` is classified destructive rather than additive.
+    trestle's `_copy_config_file` calls `copyfile` with no existence check, so
+    the stock config lands on top of whatever the operator wrote -- and
+    config.ini is where `trestle task` reads its `[task.*]` sections. Nothing
+    in the output says so, which is what makes the annotation the only warning
+    a client gets.
+    """
+    root = workspace["root"]
+
+    async with Client(build_server("authoring")) as client:
+        await call_tool(client, "trestle_init", {"mode": "local"})
+
+        config = root / ".trestle" / "config.ini"
+        config.write_text(
+            "# trestle config file\n"
+            "[task.csv-to-oscal-cd]\n"
+            "title = my pipeline\n",
+            encoding="utf-8",
+        )
+
+        result = await call_tool(client, "trestle_init", {"mode": "local"})
+
+        assert "✅" in result
+        assert "task.csv-to-oscal-cd" not in config.read_text(encoding="utf-8")

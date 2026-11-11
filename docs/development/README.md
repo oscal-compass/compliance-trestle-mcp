@@ -240,8 +240,12 @@ for its group. Registration order follows the table.
   not a purely *additive* update, so overwriting counts, not just deleting. A
   client may auto-approve tools that say they are not destructive, so the
   default of `False` is the permissive answer and has to be earned: check it by
-  running the command twice against the real CLI and seeing whether the second
-  run refuses or overwrites. Every tool is classified, with its reason, in
+  running the command twice against the real CLI and then **looking at the
+  workspace** — not just at what the second run printed. `trestle init` was
+  classified additive on the strength of its output, and it re-copies
+  `.trestle/config.ini` over the operator's task configuration while reporting
+  success, saying nothing either time. Every tool is classified, with its
+  reason, in
   [`tests/unit/test_annotations.py`](../../tests/unit/test_annotations.py);
   a new tool fails there until it is listed.
 - **`presets=_AUTHORING`** puts the tool in the default selection. See below.

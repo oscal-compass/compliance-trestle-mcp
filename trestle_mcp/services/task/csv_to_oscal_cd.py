@@ -3,14 +3,13 @@
 This module implements conversion from CSV to OSCAL component definition format.
 """
 
-import configparser
-import tempfile
 from pathlib import Path
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from trestle_mcp.libs.trestle import run_trestle_command
+from trestle_mcp.libs.task_config import write_task_config
+from trestle_mcp.libs.trestle import LONG_TIMEOUT, command_output, run_trestle_command
 
 
 class ValidateControlsMode(str):
@@ -58,7 +57,7 @@ class TrestleTaskCsvToOscalCdInput(BaseModel):
         default=None,
         description=(
             "Optional mapping of column names to CSS classes, "
-            "e.g. {\"Rule_Id\": \"scc_class\"}. "
+            'e.g. {"Rule_Id": "scc_class"}. '
             "Each entry becomes class.<column-name> = <value> in the config."
         ),
     )
@@ -106,9 +105,7 @@ async def trestle_task_csv_to_oscal_cd(params: TrestleTaskCsvToOscalCdInput) -> 
         - Use when: "Generate component_definition.json from a CSV mapping file"
         - Don't use when: Input CSV is missing required columns
     """
-    config = configparser.ConfigParser()
-    section = "task.csv-to-oscal-cd"
-    config[section] = {
+    values = {
         "title": params.title,
         "version": params.version,
         "csv-file": params.csv_file,
@@ -118,17 +115,15 @@ async def trestle_task_csv_to_oscal_cd(params: TrestleTaskCsvToOscalCdInput) -> 
     }
 
     if params.component_definition:
-        config[section]["component-definition"] = params.component_definition
+        values["component-definition"] = params.component_definition
 
     if params.class_column_mappings:
         for col_name, class_value in params.class_column_mappings.items():
-            config[section][f"class.{col_name}"] = class_value
+            values[f"class.{col_name}"] = class_value
 
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".ini", delete=False, prefix="trestle_csv_to_cd_"
-    ) as tmp:
-        config.write(tmp)
-        config_path = tmp.name
+    config_path = write_task_config(
+        "task.csv-to-oscal-cd", values, "trestle_csv_to_cd_"
+    )
 
     try:
         args = ["task", "csv-to-oscal-cd", "--config", config_path]
@@ -138,12 +133,12 @@ async def trestle_task_csv_to_oscal_cd(params: TrestleTaskCsvToOscalCdInput) -> 
         if params.verbose:
             args.append("--verbose")
 
-        result = run_trestle_command(args)
+        result = await run_trestle_command(args, timeout=LONG_TIMEOUT)
     finally:
         Path(config_path).unlink(missing_ok=True)
 
     if result["success"]:
-        output = result["stdout"].strip()
+        output = command_output(result)
         return (
             f"✅ CSV converted to OSCAL component definition successfully\n\n"
             f"Output directory: {params.output_dir}\n\n{output}"

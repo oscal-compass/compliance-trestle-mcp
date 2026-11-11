@@ -7,7 +7,11 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from trestle_mcp.libs.trestle import run_trestle_command
+from trestle_mcp.libs.trestle import (
+    LONG_TIMEOUT,
+    command_output,
+    run_trestle_command,
+)
 
 
 class TrestleAuthorProfileGenerateInput(BaseModel):
@@ -91,10 +95,13 @@ async def trestle_author_profile_generate(
     if params.verbose:
         args.append("--verbose")
 
-    result = run_trestle_command(args)
+    # ProfileGenerate resolves the profile before writing any markdown
+    # (trestle's prof.py calls ProfileResolver unconditionally), so this is
+    # profile-resolve plus a markdown write -- measured at the same cost.
+    result = await run_trestle_command(args, timeout=LONG_TIMEOUT)
 
     if result["success"]:
-        output = result["stdout"].strip()
+        output = command_output(result)
         return f"✅ Profile-based markdown controls generated successfully\n\nOutput: {params.output}\n\n{output}"
     else:
         error = result["stderr"].strip()

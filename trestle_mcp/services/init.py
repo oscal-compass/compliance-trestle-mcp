@@ -8,7 +8,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from trestle_mcp.libs.trestle import run_trestle_command
+from trestle_mcp.libs.trestle import command_output, run_trestle_command
 
 
 class InitMode(str, Enum):
@@ -41,6 +41,15 @@ async def trestle_init(params: TrestleInitInput) -> str:
     This tool initializes the current directory as a Trestle workspace,
     creating the necessary directory structure for OSCAL model management.
 
+    **Do not run this on a workspace that is already initialized.** Creating
+    the directories is harmless -- they are only made when missing -- but
+    `local` and `full` mode also copy trestle's stock `.trestle/config.ini`
+    over whatever is there, with no check and no warning, and still report
+    success. That file is where `trestle task` reads its `[task.*]` sections
+    from, so an operator's task configuration is gone. Check for a `.trestle`
+    directory before calling this; there is nothing to gain by running it
+    again.
+
     OSCAL Model Types supported:
     - Catalog
     - Profile
@@ -62,7 +71,8 @@ async def trestle_init(params: TrestleInitInput) -> str:
     Examples:
         - Use when: "Initialize trestle workspace"
         - Use when: "Set up trestle in full mode"
-        - Don't use when: Workspace is already initialized
+        - Don't use when: Workspace is already initialized — this overwrites
+          .trestle/config.ini rather than leaving it alone.
     """
     args = ["init"]
 
@@ -81,10 +91,10 @@ async def trestle_init(params: TrestleInitInput) -> str:
     if params.verbose:
         args.append("--verbose")
 
-    result = run_trestle_command(args)
+    result = await run_trestle_command(args)
 
     if result["success"]:
-        output = result["stdout"].strip()
+        output = command_output(result)
         return f"✅ Trestle workspace initialized successfully\n\n{output}"
     else:
         error = result["stderr"].strip()

@@ -1,9 +1,30 @@
 #!/usr/bin/env python3
 """Unit tests for libs/trestle.py."""
 
+import asyncio
+import threading
 from unittest.mock import MagicMock, patch
 
-from trestle_mcp.libs.trestle import find_trestle_bin, run_trestle_command
+import pytest
+
+from trestle_mcp.libs.trestle import (
+    DEFAULT_TIMEOUT,
+    LONG_TIMEOUT,
+    command_output,
+    find_trestle_bin,
+)
+from trestle_mcp.libs.trestle import run_trestle_command as _run_trestle_command
+
+
+def run_trestle_command(*args, **kwargs) -> dict:
+    """Drive the coroutine from these synchronous tests.
+
+    The runner is awaitable so that the wait happens on a worker thread rather
+    than on the event loop. What it builds -- argv, working directory, timeout
+    -- is what these tests are about, so they call it through here rather than
+    each becoming an async test.
+    """
+    return asyncio.run(_run_trestle_command(*args, **kwargs))
 
 
 class TestFindTrestleBin:
@@ -98,8 +119,30 @@ class TestRunTrestleCommand:
                 assert "Test error" in result["stderr"]
                 assert result["returncode"] == -1
 
-    def test_command_with_custom_cwd(self):
+    def test_command_with_custom_cwd(self, tmp_path):
         """Test command execution with custom working directory."""
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = "Success"
+        mock_result.stderr = ""
+        custom = tmp_path / "custom" / "path"
+        custom.mkdir(parents=True)
+
+        with patch(
+            "trestle_mcp.libs.trestle.subprocess.run", return_value=mock_result
+        ) as mock_run:
+            with patch(
+                "trestle_mcp.libs.trestle.find_trestle_bin", return_value="trestle"
+            ):
+                result = run_trestle_command(["init", "--local"], cwd=str(custom))
+
+                assert result["success"] is True
+                mock_run.assert_called_once()
+                call_kwargs = mock_run.call_args[1]
+                assert call_kwargs["cwd"] == str(custom)
+
+    def test_default_timeout_is_applied(self):
+        """Test the default timeout is handed to subprocess.run."""
         mock_result = MagicMock()
         mock_result.returncode = 0
         mock_result.stdout = "Success"
@@ -111,9 +154,253 @@ class TestRunTrestleCommand:
             with patch(
                 "trestle_mcp.libs.trestle.find_trestle_bin", return_value="trestle"
             ):
-                result = run_trestle_command(["init", "--local"], cwd="/custom/path")
+                run_trestle_command(["init", "--local"])
 
-                assert result["success"] is True
-                mock_run.assert_called_once()
-                call_kwargs = mock_run.call_args[1]
-                assert call_kwargs["cwd"] == "/custom/path"
+                assert mock_run.call_args[1]["timeout"] == DEFAULT_TIMEOUT
+
+    def test_custom_timeout_is_applied(self):
+        """Test an explicit timeout overrides the default."""
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = "Success"
+        mock_result.stderr = ""
+
+        with patch(
+            "trestle_mcp.libs.trestle.subprocess.run", return_value=mock_result
+        ) as mock_run:
+            with patch(
+                "trestle_mcp.libs.trestle.find_trestle_bin", return_value="trestle"
+            ):
+                run_trestle_command(["import"], timeout=LONG_TIMEOUT)
+
+                assert mock_run.call_args[1]["timeout"] == LONG_TIMEOUT
+                assert LONG_TIMEOUT > DEFAULT_TIMEOUT
+
+    def test_timeout_message_reports_the_actual_timeout(self):
+        """Test the timeout error names the timeout that was used, not a constant."""
+        from subprocess import TimeoutExpired
+
+        with patch(
+            "trestle_mcp.libs.trestle.subprocess.run",
+            side_effect=TimeoutExpired("cmd", LONG_TIMEOUT),
+        ):
+            with patch(
+                "trestle_mcp.libs.trestle.find_trestle_bin", return_value="trestle"
+            ):
+                result = run_trestle_command(["import"], timeout=LONG_TIMEOUT)
+
+                assert result["success"] is False
+                assert f"timed out after {LONG_TIMEOUT} seconds" in result["stderr"]
+
+
+class TestTrestleRootIsTheWorkingDirectory:
+    """Test the working directory is derived from --trestle-root.
+
+    Without this, a relative path argument is resolved against the directory the
+    MCP client started the server in, which is not the workspace, so the command
+    fails on a path the caller had every reason to think was right.
+    """
+
+    @staticmethod
+    def _run(args, **kwargs):
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = ""
+        mock_result.stderr = ""
+
+        with patch(
+            "trestle_mcp.libs.trestle.subprocess.run", return_value=mock_result
+        ) as mock_run:
+            with patch(
+                "trestle_mcp.libs.trestle.find_trestle_bin", return_value="trestle"
+            ):
+                run_trestle_command(args, **kwargs)
+        return mock_run.call_args
+
+    def test_absolute_root_becomes_the_cwd(self, tmp_path):
+        """Test the command runs inside the workspace it was given."""
+        root = tmp_path / "ws"
+        root.mkdir()
+        call = self._run(
+            [
+                "split",
+                "--file",
+                "catalogs/c/catalog.json",
+                "--trestle-root",
+                str(root),
+            ]
+        )
+        assert call[1]["cwd"] == str(root)
+
+    def test_relative_root_is_made_absolute_in_both_places(self, tmp_path):
+        """Test a relative root is resolved once, for the cwd and the flag.
+
+        The flag has to carry the absolute path too: the command runs *in* that
+        directory, so a relative `--trestle-root ws` would resolve to `ws/ws`.
+        """
+        (tmp_path / "ws").mkdir()
+        with patch("trestle_mcp.libs.trestle.os.getcwd", return_value=str(tmp_path)):
+            call = self._run(["describe", "--file", "f.json", "--trestle-root", "ws"])
+        args = call[0][0][1:]
+        assert args[args.index("--trestle-root") + 1] == str(tmp_path / "ws")
+        assert call[1]["cwd"] == str(tmp_path / "ws")
+
+    def test_joined_flag_form_is_handled_too(self, tmp_path):
+        """Test `--trestle-root=/ws` is resolved like the two-token form."""
+        root = tmp_path / "ws"
+        root.mkdir()
+        call = self._run(["describe", "--file", "f.json", f"--trestle-root={root}"])
+        assert call[1]["cwd"] == str(root)
+        assert f"--trestle-root={root}" in call[0][0]
+
+    def test_an_explicit_cwd_still_wins(self, tmp_path):
+        """Test merge can override the root with the model directory."""
+        root = tmp_path / "ws"
+        model_dir = root / "catalogs" / "c"
+        model_dir.mkdir(parents=True)
+        call = self._run(
+            ["merge", "--element", "catalog.metadata", "--trestle-root", str(root)],
+            cwd=str(model_dir),
+        )
+        assert call[1]["cwd"] == str(model_dir)
+
+    def test_no_root_falls_back_to_the_process_directory(self):
+        """Test behaviour is unchanged when no root is given."""
+        with patch("trestle_mcp.libs.trestle.os.getcwd", return_value="/start"):
+            call = self._run(["version"])
+        assert call[1]["cwd"] == "/start"
+
+    def test_a_missing_root_is_not_used_as_the_cwd(self, tmp_path):
+        """Test a root that does not exist is left for trestle to report.
+
+        Used as the cwd, it makes subprocess.run raise FileNotFoundError before
+        trestle starts, and the generic handler turns that into "Error
+        executing trestle: [Errno 2] No such file or directory" -- which reads
+        as a missing trestle binary, not as a mistyped workspace path. Skipped,
+        trestle gets the path as an argument and says "Given directory ... is
+        not in a valid trestle root directory".
+        """
+        missing = str(tmp_path / "not-there")
+        with patch("trestle_mcp.libs.trestle.os.getcwd", return_value="/start"):
+            call = self._run(
+                ["describe", "--file", "f.json", "--trestle-root", missing]
+            )
+        assert call[1]["cwd"] == "/start"
+        args = call[0][0][1:]
+        assert args[args.index("--trestle-root") + 1] == missing
+
+    def test_a_missing_explicit_cwd_is_not_used_either(self, tmp_path):
+        """Test the same for merge's model directory.
+
+        merge passes its own cwd, and a model_dir that is not there gave the
+        same misleading error.
+        """
+        root = tmp_path / "ws"
+        root.mkdir()
+        missing = str(root / "catalogs" / "nope")
+        call = self._run(
+            ["merge", "--element", "catalog.metadata", "--trestle-root", str(root)],
+            cwd=missing,
+        )
+        assert call[1]["cwd"] == str(root)
+
+    def test_an_existing_root_is_still_used(self, tmp_path):
+        """Test the guard does not break the normal case."""
+        root = tmp_path / "ws"
+        root.mkdir()
+        call = self._run(["describe", "--file", "f.json", "--trestle-root", str(root)])
+        assert call[1]["cwd"] == str(root)
+
+
+class TestTheEventLoopStaysFree:
+    """Test the subprocess wait does not block the event loop.
+
+    The wait used to happen on the loop, so a slow command -- an import of a
+    remote catalog, a profile resolve, anything carrying LONG_TIMEOUT -- stopped
+    the whole server for as long as it ran: no other tool call, no ping, no
+    cancellation.
+    """
+
+    @pytest.mark.asyncio
+    async def test_other_coroutines_run_while_a_command_is_waiting(self):
+        """Test a concurrent coroutine runs *during* the wait, not after it.
+
+        The subprocess only finishes once another coroutine releases it, so the
+        two have to overlap for this to complete at all. The assertion is on
+        `released`: if the wait held the loop, the releasing coroutine never got
+        a turn, `release.wait` returned False on its own timeout, and the ticks
+        that follow are no evidence of concurrency.
+        """
+        started = threading.Event()
+        release = threading.Event()
+        released = None
+        ticks = 0
+
+        def slow_subprocess(*args, **kwargs):
+            nonlocal released
+            started.set()
+            released = release.wait(timeout=2)
+            result = MagicMock()
+            result.returncode = 0
+            result.stdout = "done"
+            result.stderr = ""
+            return result
+
+        async def tick():
+            nonlocal ticks
+            while not started.is_set():
+                await asyncio.sleep(0.01)
+            for _ in range(3):
+                ticks += 1
+                await asyncio.sleep(0.01)
+            release.set()
+
+        with patch(
+            "trestle_mcp.libs.trestle.subprocess.run", side_effect=slow_subprocess
+        ):
+            with patch(
+                "trestle_mcp.libs.trestle.find_trestle_bin", return_value="trestle"
+            ):
+                result, _ = await asyncio.gather(
+                    _run_trestle_command(["import"], timeout=LONG_TIMEOUT), tick()
+                )
+
+        assert released is True, "the event loop was blocked for the whole wait"
+        assert ticks == 3
+        assert result["success"] is True
+
+
+class TestCommandOutput:
+    """Test suite for command_output.
+
+    trestle warns on stderr and still exits 0, so a result built from stdout
+    alone reported success and dropped the warning -- the caller had no way to
+    learn that part of its input was discarded.
+    """
+
+    def test_stdout_alone_is_returned_unchanged(self):
+        """Test the common case adds nothing: a clean run writes no stderr."""
+        result = {"stdout": "  done\n", "stderr": "  \n", "returncode": 0}
+        assert command_output(result) == "done"
+
+    def test_a_warning_is_appended_under_a_heading(self):
+        """Test stderr is kept, and marked as coming from trestle."""
+        result = {
+            "stdout": "output: out/mapping-collection.json\n",
+            "stderr": "WARNING: Percentage value out of range (0-1): 80.0\n",
+            "returncode": 0,
+        }
+        out = command_output(result)
+        assert "output: out/mapping-collection.json" in out
+        assert "Percentage value out of range" in out
+        assert "trestle also reported" in out
+
+    def test_a_warning_with_no_stdout_is_still_returned(self):
+        """Test a command that only writes to stderr is not reported as silent.
+
+        `trestle task -l` is one: its listing goes to stderr.
+        """
+        result = {"stdout": "", "stderr": "available tasks:\n  csv-to-oscal-cd\n"}
+        out = command_output(result)
+        assert "csv-to-oscal-cd" in out
+        assert not out.startswith("\n")

@@ -7,7 +7,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from trestle_mcp.libs.trestle import run_trestle_command
+from trestle_mcp.libs.trestle import LONG_TIMEOUT, command_output, run_trestle_command
 
 
 class TrestleAuthorProfileResolveInput(BaseModel):
@@ -92,10 +92,11 @@ async def trestle_author_profile_resolve(
     if params.trestle_root:
         args.extend(["--trestle-root", params.trestle_root])
 
-    result = run_trestle_command(args)
+    # Resolving a profile over a large catalog takes minutes, not seconds.
+    result = await run_trestle_command(args, timeout=LONG_TIMEOUT)
 
     if result["success"]:
-        output = result["stdout"].strip()
+        output = command_output(result)
         return f"✅ Catalog controls generated as markdown successfully\n\nOutput: {params.output}\n\n{output}"
     else:
         error = result["stderr"].strip()

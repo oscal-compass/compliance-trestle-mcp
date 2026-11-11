@@ -8,7 +8,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from trestle_mcp.libs.trestle import run_trestle_command
+from trestle_mcp.libs.trestle import LONG_TIMEOUT, command_output, run_trestle_command
 
 
 class TrestleImportInput(BaseModel):
@@ -71,10 +71,12 @@ async def trestle_import(params: TrestleImportInput) -> str:
     if params.verbose:
         args.append("--verbose")
 
-    result = run_trestle_command(args)
+    # A remote catalog can be tens of MB over the network; the default
+    # timeout is not enough for e.g. the NIST SP 800-53 rev5 catalog.
+    result = await run_trestle_command(args, timeout=LONG_TIMEOUT)
 
     if result["success"]:
-        output = result["stdout"].strip()
+        output = command_output(result)
         return f"✅ OSCAL model imported successfully\n\nOutput: {params.output}\n\n{output}"
     else:
         error = result["stderr"].strip()

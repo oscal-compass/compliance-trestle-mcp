@@ -10,7 +10,8 @@ from fastmcp.client import Client
 from trestle.oscal.catalog import Catalog
 from trestle.oscal.profile import Profile
 
-from trestle_mcp.main import mcp
+from trestle_mcp.main import build_server
+from trestle_mcp.tools import DEFAULT_SELECTOR
 
 
 def extract_frontmatter(markdown_text):
@@ -36,15 +37,32 @@ async def call_tool(client: Client, name: str, params: Dict[str, Any]):
     return await client.call_tool(name, {"params": params}, raise_on_error=True)
 
 
+@pytest.fixture
+def restore_cwd():
+    """Restore the working directory after a test that chdirs away.
+
+    Without this the cwd stays inside a deleted TemporaryDirectory and every
+    later test that resolves a relative path fails with FileNotFoundError.
+    """
+    previous = os.getcwd()
+    try:
+        yield
+    finally:
+        os.chdir(previous)
+
+
 @pytest.mark.anyio
-async def test_trestle_catalog_generate_tool():
+async def test_trestle_catalog_generate_tool(restore_cwd):
     with tempfile.TemporaryDirectory() as tmp_workspace:
         # Prepare test catalog.json for import
         import_catalog_path = Path("tests/data/test-catalog.json").absolute().as_posix()
         import_profile_path = Path("tests/data/test-profile.json").absolute().as_posix()
 
         os.chdir(tmp_workspace)
-        async with Client(mcp) as client:
+        # The default selection, named rather than taken from the ambient
+        # TRESTLE_MCP_TOOLS: a developer with that exported for their own client
+        # should not change what this test exercises.
+        async with Client(build_server(DEFAULT_SELECTOR)) as client:
 
             init_params = {"mode": "local"}
             init_resp = await call_tool(client, "trestle_init", init_params)

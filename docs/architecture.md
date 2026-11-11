@@ -170,7 +170,7 @@ The `trestle task` tools (`csv_to_oscal_cd`, `csv_to_oscal_mc`, `xlsx_to_oscal_p
 graph BT
     trestle_mcp --> mcp["mcp>=1.10.0,<2.0.0\n(Model Context Protocol)"]
     trestle_mcp --> pydantic["pydantic>=2.0.0\n(Validation)"]
-    trestle_mcp --> compliance_trestle["compliance-trestle>=3.11.0\n(OSCAL Tool)"]
+    trestle_mcp --> compliance_trestle["compliance-trestle>=4.1.0\n(OSCAL Tool)"]
     trestle_mcp --> ruamel["ruamel.yaml>=0.19.0\n(YAML)"]
     compliance_trestle --> oscal["OSCAL\n(Open Security Controls\nAssessment Language)"]
 ```

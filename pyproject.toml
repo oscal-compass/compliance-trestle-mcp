@@ -29,7 +29,14 @@ dependencies = [
     # lower-bound: FastMCP.tool(title=...) (used below) is only supported from mcp 1.10.0.
     "mcp>=1.10.0,<2.0.0",
     "pydantic>=2.0.0",
-    "compliance-trestle>=3.11.0",
+    # Lower-bound: the default tool set needs the `csv-to-oscal-mc` task and the
+    # `mapping-collection` model type, both new in trestle 4.0.0, and the
+    # `xlsx-to-oscal-poam` task, new in 4.1.0. Under the old >=3.11.0 bound a
+    # 3.11 or 3.12 install satisfied this package and then failed every call to
+    # two of the thirteen default tools. 4.1.0 is where the whole wrapped
+    # surface exists: verified by running the end-to-end suite against it, and
+    # by diffing the option set of all 25 wrapped commands against 5.2.0.
+    "compliance-trestle>=4.1.0",
     "ruamel.yaml>=0.19.0"
 ]
 

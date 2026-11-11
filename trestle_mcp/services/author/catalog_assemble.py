@@ -8,7 +8,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from trestle_mcp.libs.trestle import run_trestle_command
+from trestle_mcp.libs.trestle import command_output, run_trestle_command
 
 
 class TrestleAuthorCatalogAssembleInput(BaseModel):
@@ -105,7 +105,7 @@ async def trestle_author_catalog_assemble(
     result = await run_trestle_command(args)
 
     if result["success"]:
-        output = result["stdout"].strip()
+        output = command_output(result)
         return (
             f"✅ Catalog assembled from markdown successfully\n\n"
             f"Output: {params.output}\n\n{output}"

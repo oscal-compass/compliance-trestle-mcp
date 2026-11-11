@@ -9,7 +9,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from trestle_mcp.libs.oscal_types import FileExtension, OscalModelType
-from trestle_mcp.libs.trestle import run_trestle_command
+from trestle_mcp.libs.trestle import command_output, run_trestle_command
 
 
 class TrestleAssembleInput(BaseModel):
@@ -91,7 +91,7 @@ async def trestle_assemble(params: TrestleAssembleInput) -> str:
     result = await run_trestle_command(args)
 
     if result["success"]:
-        output = result["stdout"].strip()
+        output = command_output(result)
         target = params.name or f"all {params.model_type.value} models"
         return (
             f"✅ Model assembled into dist successfully\n\nTarget: {target}\n\n{output}"

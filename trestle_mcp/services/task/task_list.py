@@ -7,7 +7,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from trestle_mcp.libs.trestle import run_trestle_command
+from trestle_mcp.libs.trestle import command_output, run_trestle_command
 
 
 class TrestleTaskListInput(BaseModel):
@@ -81,7 +81,7 @@ async def trestle_task_list(params: TrestleTaskListInput) -> str:
 
     # `trestle task` writes both the list and the per-task help through its
     # logger, which goes to stderr, so a successful run can have empty stdout.
-    body = (result["stdout"].strip() or result["stderr"].strip()) or "(no output)"
+    body = command_output(result) or "(no output)"
 
     if result["success"]:
         subject = f"Task info: {params.task}" if params.task else "Available tasks"

@@ -9,7 +9,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from trestle_mcp.libs.oscal_types import FileExtension, OscalModelType
-from trestle_mcp.libs.trestle import run_trestle_command
+from trestle_mcp.libs.trestle import command_output, run_trestle_command
 
 
 class TrestleCreateInput(BaseModel):
@@ -120,7 +120,7 @@ async def trestle_create(params: TrestleCreateInput) -> str:
     result = await run_trestle_command(args)
 
     if result["success"]:
-        output = result["stdout"].strip()
+        output = command_output(result)
         target = params.output or params.file or "(unnamed)"
         return f"✅ OSCAL model created successfully\n\nTarget: {target}\n\n{output}"
     else:

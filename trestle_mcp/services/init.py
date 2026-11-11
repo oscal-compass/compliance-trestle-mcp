@@ -8,7 +8,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from trestle_mcp.libs.trestle import run_trestle_command
+from trestle_mcp.libs.trestle import command_output, run_trestle_command
 
 
 class InitMode(str, Enum):
@@ -84,7 +84,7 @@ async def trestle_init(params: TrestleInitInput) -> str:
     result = await run_trestle_command(args)
 
     if result["success"]:
-        output = result["stdout"].strip()
+        output = command_output(result)
         return f"✅ Trestle workspace initialized successfully\n\n{output}"
     else:
         error = result["stderr"].strip()

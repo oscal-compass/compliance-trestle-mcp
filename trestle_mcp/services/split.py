@@ -7,7 +7,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from trestle_mcp.libs.trestle import run_trestle_command
+from trestle_mcp.libs.trestle import command_output, run_trestle_command
 
 
 class TrestleSplitInput(BaseModel):
@@ -69,7 +69,7 @@ async def trestle_split(params: TrestleSplitInput) -> str:
     result = await run_trestle_command(args)
 
     if result["success"]:
-        output = result["stdout"].strip()
+        output = command_output(result)
         return (
             f"✅ Model split successfully\n\n"
             f"File: {params.file}\nElement: {params.element}\n\n{output}"

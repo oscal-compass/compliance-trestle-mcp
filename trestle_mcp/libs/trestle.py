@@ -7,7 +7,7 @@ import asyncio
 import os
 import subprocess
 from pathlib import Path
-from typing import Optional
+from typing import Any, Mapping, Optional
 
 #: Timeout (seconds) applied to a trestle command when the caller does not ask
 #: for anything else. Enough for every command that only touches local models.
@@ -75,6 +75,33 @@ def absolute_trestle_root(args: list[str]) -> tuple[list[str], Optional[str]]:
             root = os.path.abspath(arg[len(joined) :])
             return args[:index] + [joined + root] + args[index + 1 :], root
     return list(args), None
+
+
+def command_output(result: Mapping[str, Any]) -> str:
+    """Return a successful command's output, keeping any warning it wrote.
+
+    trestle reports problems it recovered from on stderr and still exits 0: a
+    percentage outside 0-100 that it drops, a control id in a list that it
+    cannot resolve and discards. Returning stdout alone told the caller the run
+    succeeded and threw away the news that part of the input did not make it
+    into the output -- the caller has no other way to find out, short of reading
+    the generated file and noticing something missing.
+
+    Costs nothing when there is nothing to say: a successful trestle command
+    writes to stderr only when it has a warning.
+
+    Args:
+        result: A result dict from `run_trestle_command`.
+
+    Returns:
+        stdout, with any stderr appended under a warning heading.
+    """
+    stdout = result["stdout"].strip()
+    stderr = result["stderr"].strip()
+    if not stderr:
+        return stdout
+    warning = f"⚠️ trestle also reported:\n{stderr}"
+    return f"{stdout}\n\n{warning}" if stdout else warning
 
 
 async def run_trestle_command(

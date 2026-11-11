@@ -9,7 +9,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from trestle_mcp.libs.oscal_types import OscalModelType
-from trestle_mcp.libs.trestle import run_trestle_command
+from trestle_mcp.libs.trestle import command_output, run_trestle_command
 
 
 class TrestleVersionInput(BaseModel):
@@ -86,7 +86,7 @@ async def trestle_version(params: TrestleVersionInput) -> str:
     result = await run_trestle_command(args)
 
     if result["success"]:
-        output = result["stdout"].strip()
+        output = command_output(result)
         if params.name:
             # trestle says "Version of OSCAL object of <name> <type> is: X",
             # where X is metadata.version. Passed through unlabelled, an agent

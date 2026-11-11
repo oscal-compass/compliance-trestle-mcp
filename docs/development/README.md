@@ -176,6 +176,14 @@ positional (`trestle assemble <type>`, `trestle task <name>`), use an enum from
 subprocess on a worker thread, so a slow command does not stop the event loop
 and with it every other tool call, ping and cancellation on the server.
 
+**Build the success message with `command_output`,** not from
+`result["stdout"]`. trestle warns on stderr and still exits 0 — a confidence
+score out of range, a control id it could not resolve — and it drops the input
+it warned about. Reporting stdout alone told the caller the run succeeded and
+threw the warning away, leaving nothing to indicate the output is missing
+something. `command_output` appends stderr under a heading, and appends nothing
+when stderr is empty, which is the normal case for a successful command.
+
 **Timeouts.** `run_trestle_command` applies `DEFAULT_TIMEOUT` (60s). Pass
 `timeout=LONG_TIMEOUT` (600s) for commands that fetch remote content, resolve a
 profile or walk a whole catalog. Twelve tools do, and the list lives in

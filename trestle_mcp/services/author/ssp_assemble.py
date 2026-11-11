@@ -8,7 +8,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from trestle_mcp.libs.trestle import LONG_TIMEOUT, run_trestle_command
+from trestle_mcp.libs.trestle import LONG_TIMEOUT, command_output, run_trestle_command
 
 
 class TrestleAuthorSspAssembleInput(BaseModel):
@@ -101,7 +101,7 @@ async def trestle_author_ssp_assemble(params: TrestleAuthorSspAssembleInput) -> 
     result = await run_trestle_command(args, timeout=LONG_TIMEOUT)
 
     if result["success"]:
-        output = result["stdout"].strip()
+        output = command_output(result)
         return (
             f"✅ SSP assembled from markdown successfully\n\n"
             f"Output: {params.output}\n\n{output}"

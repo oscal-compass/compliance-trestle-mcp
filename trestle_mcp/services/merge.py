@@ -8,7 +8,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from trestle_mcp.libs.trestle import run_trestle_command
+from trestle_mcp.libs.trestle import command_output, run_trestle_command
 
 
 class TrestleMergeInput(BaseModel):
@@ -88,7 +88,7 @@ async def trestle_merge(params: TrestleMergeInput) -> str:
     result = await run_trestle_command(args, cwd=model_dir)
 
     if result["success"]:
-        output = result["stdout"].strip()
+        output = command_output(result)
         return (
             f"✅ Model merged successfully\n\n"
             f"Model: {params.model_dir}\nElement: {params.element}\n\n{output}"

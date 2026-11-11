@@ -11,7 +11,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from trestle_mcp.libs.trestle import run_trestle_command
+from trestle_mcp.libs.trestle import command_output, run_trestle_command
 
 
 class TrestleRemoveInput(BaseModel):
@@ -80,7 +80,7 @@ async def trestle_remove(params: TrestleRemoveInput) -> str:
     result = await run_trestle_command(args)
 
     if result["success"]:
-        output = result["stdout"].strip()
+        output = command_output(result)
         return (
             f"✅ Element removed successfully\n\n"
             f"File: {params.file}\nElement: {params.element}\n\n{output}"

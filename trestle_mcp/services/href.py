@@ -8,7 +8,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from trestle_mcp.libs.trestle import run_trestle_command
+from trestle_mcp.libs.trestle import command_output, run_trestle_command
 
 
 class TrestleHrefInput(BaseModel):
@@ -87,7 +87,7 @@ async def trestle_href(params: TrestleHrefInput) -> str:
     result = await run_trestle_command(args)
 
     if result["success"]:
-        output = result["stdout"].strip()
+        output = command_output(result)
         action = "Profile href updated" if params.href else "Profile imports listed"
         return f"✅ {action}\n\nProfile: {params.name}\n\n{output}"
     else:

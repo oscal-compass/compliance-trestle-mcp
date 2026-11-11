@@ -8,7 +8,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from trestle_mcp.libs.trestle import LONG_TIMEOUT, run_trestle_command
+from trestle_mcp.libs.trestle import LONG_TIMEOUT, command_output, run_trestle_command
 
 
 class TrestleAuthorSspFilterInput(BaseModel):
@@ -124,7 +124,7 @@ async def trestle_author_ssp_filter(params: TrestleAuthorSspFilterInput) -> str:
     result = await run_trestle_command(args, timeout=LONG_TIMEOUT)
 
     if result["success"]:
-        output = result["stdout"].strip()
+        output = command_output(result)
         return f"✅ SSP filtered successfully\n\nOutput: {params.output}\n\n{output}"
     else:
         error = result["stderr"].strip()

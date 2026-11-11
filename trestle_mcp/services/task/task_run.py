@@ -10,7 +10,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from trestle_mcp.libs.task_config import write_task_config
-from trestle_mcp.libs.trestle import LONG_TIMEOUT, run_trestle_command
+from trestle_mcp.libs.trestle import LONG_TIMEOUT, command_output, run_trestle_command
 
 
 class TrestleTaskRunInput(BaseModel):
@@ -105,7 +105,7 @@ async def trestle_task_run(params: TrestleTaskRunInput) -> str:
         Path(config_path).unlink(missing_ok=True)
 
     if result["success"]:
-        output = result["stdout"].strip() or result["stderr"].strip()
+        output = command_output(result) or result["stderr"].strip()
         return (
             f"✅ Trestle task completed successfully\n\nTask: {params.task}\n\n{output}"
         )

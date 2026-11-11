@@ -10,6 +10,7 @@ import pytest
 from trestle_mcp.libs.trestle import (
     DEFAULT_TIMEOUT,
     LONG_TIMEOUT,
+    command_output,
     find_trestle_bin,
 )
 from trestle_mcp.libs.trestle import run_trestle_command as _run_trestle_command
@@ -310,3 +311,39 @@ class TestTheEventLoopStaysFree:
         assert released is True, "the event loop was blocked for the whole wait"
         assert ticks == 3
         assert result["success"] is True
+
+
+class TestCommandOutput:
+    """Test suite for command_output.
+
+    trestle warns on stderr and still exits 0, so a result built from stdout
+    alone reported success and dropped the warning -- the caller had no way to
+    learn that part of its input was discarded.
+    """
+
+    def test_stdout_alone_is_returned_unchanged(self):
+        """Test the common case adds nothing: a clean run writes no stderr."""
+        result = {"stdout": "  done\n", "stderr": "  \n", "returncode": 0}
+        assert command_output(result) == "done"
+
+    def test_a_warning_is_appended_under_a_heading(self):
+        """Test stderr is kept, and marked as coming from trestle."""
+        result = {
+            "stdout": "output: out/mapping-collection.json\n",
+            "stderr": "WARNING: Percentage value out of range (0-1): 80.0\n",
+            "returncode": 0,
+        }
+        out = command_output(result)
+        assert "output: out/mapping-collection.json" in out
+        assert "Percentage value out of range" in out
+        assert "trestle also reported" in out
+
+    def test_a_warning_with_no_stdout_is_still_returned(self):
+        """Test a command that only writes to stderr is not reported as silent.
+
+        `trestle task -l` is one: its listing goes to stderr.
+        """
+        result = {"stdout": "", "stderr": "available tasks:\n  csv-to-oscal-cd\n"}
+        out = command_output(result)
+        assert "csv-to-oscal-cd" in out
+        assert not out.startswith("\n")

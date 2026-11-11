@@ -8,7 +8,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from trestle_mcp.libs.oscal_types import OscalModelType
-from trestle_mcp.libs.trestle import run_trestle_command
+from trestle_mcp.libs.trestle import command_output, run_trestle_command
 
 
 class TrestleReplicateInput(BaseModel):
@@ -77,7 +77,7 @@ async def trestle_replicate(params: TrestleReplicateInput) -> str:
     result = await run_trestle_command(args)
 
     if result["success"]:
-        output = result["stdout"].strip()
+        output = command_output(result)
         return (
             f"✅ Model replicated successfully\n\n"
             f"Output: {params.output}\n\n{output}"

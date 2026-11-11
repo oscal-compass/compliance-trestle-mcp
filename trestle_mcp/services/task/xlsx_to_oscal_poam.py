@@ -10,7 +10,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from trestle_mcp.libs.task_config import write_task_config
-from trestle_mcp.libs.trestle import LONG_TIMEOUT, run_trestle_command
+from trestle_mcp.libs.trestle import LONG_TIMEOUT, command_output, run_trestle_command
 
 
 class TrestleTaskXlsxToOscalPoamInput(BaseModel):
@@ -143,7 +143,7 @@ async def trestle_task_xlsx_to_oscal_poam(
         Path(config_path).unlink(missing_ok=True)
 
     if result["success"]:
-        output = result["stdout"].strip()
+        output = command_output(result)
         return (
             f"✅ XLSX converted to OSCAL POA&M successfully\n\n"
             f"Output directory: {params.output_dir}\n\n{output}"

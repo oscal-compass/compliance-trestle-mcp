@@ -343,6 +343,56 @@ async def test_csv_to_oscal_mapping_collection(workspace):
 
 
 @pytest.mark.anyio
+async def test_a_recovered_warning_reaches_the_caller(workspace):
+    """A warning trestle writes to stderr on a successful run is reported.
+
+    trestle drops a confidence score outside 0..1 and carries on, exiting 0.
+    Returning stdout alone reported a clean success for a mapping collection
+    that silently lost data, with nothing in the result to say so.
+    """
+    root = workspace["root"]
+
+    async with Client(build_server("authoring")) as client:
+        await call_tool(client, "trestle_init", {"mode": "local"})
+        for name in ("source", "target"):
+            await call_tool(
+                client,
+                "trestle_import",
+                {"file": workspace["catalog"].as_posix(), "output": name},
+            )
+
+        # 80 instead of 0.8: out of range, so trestle warns and drops it
+        rows = workspace["mapping_csv"].read_text(encoding="utf-8").splitlines()
+        csv_copy = root / "out-of-range.csv"
+        csv_copy.write_text(
+            "\n".join(row.replace(",1.0", ",80") for row in rows) + "\n",
+            encoding="utf-8",
+        )
+
+        result = await call_tool(
+            client,
+            "trestle_task_csv_to_oscal_mc",
+            {
+                "title": "Test Crosswalk",
+                "version": "1.0.0",
+                "csv_file": csv_copy.as_posix(),
+                "output_dir": "mapping-collections/warned",
+            },
+        )
+
+        assert "✅" in result
+        assert "Percentage value out of range" in result
+
+        # and the warning was worth having: the score really is gone
+        output = root / "mapping-collections" / "warned" / "mapping-collection.json"
+        maps = json.loads(output.read_text())["mapping-collection"]["mappings"][0][
+            "maps"
+        ]
+        equivalent = next(e for e in maps if e["relationship"] == "equivalent")
+        assert "confidence-score" not in equivalent
+
+
+@pytest.mark.anyio
 async def test_generic_task_tools(workspace):
     """List the available tasks and run one through the generic runner."""
     root = workspace["root"]

@@ -9,7 +9,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from trestle_mcp.libs.task_config import write_task_config
-from trestle_mcp.libs.trestle import LONG_TIMEOUT, run_trestle_command
+from trestle_mcp.libs.trestle import LONG_TIMEOUT, command_output, run_trestle_command
 
 
 class TrestleTaskCsvToOscalMcInput(BaseModel):
@@ -136,7 +136,7 @@ async def trestle_task_csv_to_oscal_mc(params: TrestleTaskCsvToOscalMcInput) -> 
         Path(config_path).unlink(missing_ok=True)
 
     if result["success"]:
-        output = result["stdout"].strip()
+        output = command_output(result)
         return (
             f"✅ CSV converted to OSCAL mapping collection successfully\n\n"
             f"Output directory: {params.output_dir}\n\n{output}"

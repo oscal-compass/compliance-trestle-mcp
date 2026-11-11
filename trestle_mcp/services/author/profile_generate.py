@@ -7,7 +7,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from trestle_mcp.libs.trestle import run_trestle_command
+from trestle_mcp.libs.trestle import command_output, run_trestle_command
 
 
 class TrestleAuthorProfileGenerateInput(BaseModel):
@@ -94,7 +94,7 @@ async def trestle_author_profile_generate(
     result = await run_trestle_command(args)
 
     if result["success"]:
-        output = result["stdout"].strip()
+        output = command_output(result)
         return f"✅ Profile-based markdown controls generated successfully\n\nOutput: {params.output}\n\n{output}"
     else:
         error = result["stderr"].strip()

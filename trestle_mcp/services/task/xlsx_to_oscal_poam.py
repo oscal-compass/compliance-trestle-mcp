@@ -4,13 +4,12 @@ This module implements conversion from a FedRAMP-format XLSX spreadsheet to an
 OSCAL Plan of Action and Milestones (POA&M).
 """
 
-import configparser
-import tempfile
 from pathlib import Path
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from trestle_mcp.libs.task_config import write_task_config
 from trestle_mcp.libs.trestle import LONG_TIMEOUT, run_trestle_command
 
 
@@ -112,9 +111,7 @@ async def trestle_task_xlsx_to_oscal_poam(
         - Use when: "Generate plan-of-action-and-milestones.json from an xlsx"
         - Don't use when: The input is a CSV, or is missing required columns
     """
-    config = configparser.ConfigParser()
-    section = "task.xlsx-to-oscal-poam"
-    config[section] = {
+    values = {
         "title": params.title,
         "version": params.version,
         "xlsx-file": params.xlsx_file,
@@ -125,15 +122,13 @@ async def trestle_task_xlsx_to_oscal_poam(
     }
 
     if params.work_sheet_name:
-        config[section]["work-sheet-name"] = params.work_sheet_name
+        values["work-sheet-name"] = params.work_sheet_name
     if params.system_id:
-        config[section]["system-id"] = params.system_id
+        values["system-id"] = params.system_id
 
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".ini", delete=False, prefix="trestle_xlsx_to_poam_"
-    ) as tmp:
-        config.write(tmp)
-        config_path = tmp.name
+    config_path = write_task_config(
+        "task.xlsx-to-oscal-poam", values, "trestle_xlsx_to_poam_"
+    )
 
     try:
         args = ["task", "xlsx-to-oscal-poam", "--config", config_path]

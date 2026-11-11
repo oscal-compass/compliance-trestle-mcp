@@ -3,13 +3,12 @@
 This module implements conversion from CSV to an OSCAL mapping-collection.
 """
 
-import configparser
-import tempfile
 from pathlib import Path
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from trestle_mcp.libs.task_config import write_task_config
 from trestle_mcp.libs.trestle import LONG_TIMEOUT, run_trestle_command
 
 
@@ -110,9 +109,7 @@ async def trestle_task_csv_to_oscal_mc(params: TrestleTaskCsvToOscalMcInput) -> 
         - Don't use when: The CSV is missing a required column, or names control
           ids that are not in the source or target resource.
     """
-    config = configparser.ConfigParser()
-    section = "task.csv-to-oscal-mc"
-    config[section] = {
+    values = {
         "title": params.title,
         "version": params.version,
         "csv-file": params.csv_file,
@@ -120,11 +117,9 @@ async def trestle_task_csv_to_oscal_mc(params: TrestleTaskCsvToOscalMcInput) -> 
         "output-overwrite": str(params.output_overwrite).lower(),
     }
 
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".ini", delete=False, prefix="trestle_csv_to_mc_"
-    ) as tmp:
-        config.write(tmp)
-        config_path = tmp.name
+    config_path = write_task_config(
+        "task.csv-to-oscal-mc", values, "trestle_csv_to_mc_"
+    )
 
     try:
         args = ["task", "csv-to-oscal-mc", "--config", config_path]

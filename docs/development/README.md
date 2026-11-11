@@ -178,9 +178,16 @@ whole catalog — `import`, `author profile-resolve`, `author ssp-generate` and
 the four `task` tools that run a task do.
 
 **Tasks take an INI file.** Every `trestle task` is driven by a
-`[task.<name>]` section. Write it to a `NamedTemporaryFile` and remove it in a
-`finally`. Values are safe to interpolate: `configparser` indents continuation
-lines, so a newline in a value cannot inject another section.
+`[task.<name>]` section. Build the values as a dict and hand it to
+`write_task_config` in `libs/task_config.py`, then remove the file it returns in
+a `finally`. Do not write the file yourself: the default `ConfigParser` uses
+`BasicInterpolation`, which rejects a `%` in a value on *assignment* — before
+any `try` — so a percent-encoded path left the service as a `ValueError`
+instead of a readable error; and trestle reads the file back with
+`ExtendedInterpolation`, which rejects a lone `$`. `write_task_config` writes
+without interpolation, doubles `$`, and writes UTF-8 to match trestle's
+`const.FILE_ENCODING`. A newline in a value is already safe — `configparser`
+indents continuation lines, so it cannot inject another section.
 
 **Reuse the shared enums.** `OscalModelType` and `FileExtension` in
 `libs/oscal_types.py` are the model-type and file-extension choices the CLI

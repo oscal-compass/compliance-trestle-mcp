@@ -4,13 +4,12 @@ This module implements `trestle task <name> -c <config>` for any task, by
 writing the INI configuration the task expects to a temporary file.
 """
 
-import configparser
-import tempfile
 from pathlib import Path
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from trestle_mcp.libs.task_config import write_task_config
 from trestle_mcp.libs.trestle import LONG_TIMEOUT, run_trestle_command
 
 
@@ -87,15 +86,9 @@ async def trestle_task_run(params: TrestleTaskRunInput) -> str:
         - Use when: A task has no typed tool here yet.
         - Don't use when: A typed tool covers the task — use it instead.
     """
-    config = configparser.ConfigParser()
-    section = f"task.{params.task}"
-    config[section] = dict(params.config)
-
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".ini", delete=False, prefix="trestle_task_"
-    ) as tmp:
-        config.write(tmp)
-        config_path = tmp.name
+    config_path = write_task_config(
+        f"task.{params.task}", dict(params.config), "trestle_task_"
+    )
 
     try:
         args = ["task", params.task, "--config", config_path]

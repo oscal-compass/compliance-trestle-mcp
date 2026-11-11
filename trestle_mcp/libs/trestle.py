@@ -120,11 +120,11 @@ async def run_trestle_command(
     The command runs in `cwd` if the caller names one and it exists, otherwise
     in the `--trestle-root` the arguments carry if that exists, otherwise in
     this process's working directory -- see `_working_directory` for why a
-    directory that is not there is skipped rather than passed on. Deriving it from the root is what keeps a relative path argument
-    relative to the workspace rather than to wherever the client started the
-    server -- see `absolute_trestle_root`. Only `trestle merge` needs an
-    explicit `cwd`, because it resolves its destination model from the working
-    directory.
+    directory that is not there is skipped rather than passed on. Deriving it
+    from the root is what keeps a relative path argument relative to the
+    workspace rather than to wherever the client started the server -- see
+    `absolute_trestle_root`. Only `trestle merge` needs an explicit `cwd`,
+    because it resolves its destination model from the working directory.
 
     Args:
         args: List of command arguments (without 'trestle' prefix)

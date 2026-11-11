@@ -178,17 +178,42 @@ Tools are registered from a table, not from decorators. Add a `ToolSpec` row to
 - `presets` decides whether the tool is exposed by default. Only add
   `_AUTHORING` if the tool is part of the authoring lifecycle a typical caller
   needs; see below.
+- `opt_in=True` takes the tool out of every group, `all` included, so only a
+  selection naming it exactly registers it; see below.
 
 #### Think about the context cost before adding a default tool
 Every registered tool's name, input schema and description is loaded into the
 client's context window on every session. Tool count is a cost paid by the
-caller, not a feature. That is why the server implements the full command
-surface but exposes only the `authoring` preset unless the caller opts into
-more with `--tools` / `TRESTLE_MCP_TOOLS`.
+caller, not a feature. That is why the server covers the command surface an
+agent should drive but exposes only the `authoring` preset unless the caller
+opts into more with `--tools` / `TRESTLE_MCP_TOOLS`.
 
 So: implementing a command is cheap, and adding it to `authoring` is not. A new
 tool should default to no preset, and join `authoring` only when the authoring
 lifecycle is incomplete without it.
+
+Measure the effect of a change with
+[`scripts/tool_context_cost.py`](scripts/tool_context_cost.py:1), which reports
+what each selection's `tools/list` result actually costs. The current figures
+are kept in [`docs/tool-context-cost.md`](tool-context-cost.md); update that
+page when a description or input model changes materially.
+
+#### Commands behind an explicit opt-in
+A command whose effect cannot be undone from inside the workspace gets
+`opt_in=True` instead of a group. No group selects it, `all` included, so an
+operator who asks for a broad group does not hand an agent a tool that destroys
+content, and reaching for it is a deliberate act recorded in the server
+configuration.
+
+- **`remove`** (`trestle_remove`): deletes an element and everything under it
+  from a model file in place. trestle keeps no backup, so the only way back is
+  version control. It is the inverse of `trestle_create`'s element mode, which
+  is why it is covered at all rather than left out.
+
+Use this sparingly. A tool that merely writes files — `generate`, `assemble`,
+`import` — is not in this category: its output is reviewable and re-derivable.
+The test is whether a mistaken call loses information that was not written by
+the same tool.
 
 #### Commands deliberately not covered
 These have no tools, and the reasons are worth keeping:

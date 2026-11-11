@@ -13,6 +13,11 @@ def _names(selector):
     return [spec.name for spec in tools.resolve_tool_specs(selector)]
 
 
+def _selectable_names():
+    """Every tool a group can select, i.e. the table minus the opt-in tools."""
+    return [spec.name for spec in tools.TOOL_SPECS if not spec.opt_in]
+
+
 class TestToolTable:
     """Test suite for the tool table itself."""
 
@@ -26,12 +31,19 @@ class TestToolTable:
         for spec in tools.TOOL_SPECS:
             assert spec.group in tools.STRUCTURAL_GROUPS
 
-    def test_structural_groups_partition_the_table(self):
-        """Test core, author and task together cover every tool, once each."""
+    def test_structural_groups_partition_the_selectable_table(self):
+        """Test core, author and task cover every selectable tool, once each."""
         total = sum(
             len(tools.group_members(group)) for group in tools.STRUCTURAL_GROUPS
         )
-        assert total == len(tools.TOOL_SPECS)
+        assert total == len(_selectable_names())
+
+    def test_opt_in_tools_still_have_a_structural_group(self):
+        """Test an opt-in tool is documented with its peers even though no group
+        selects it."""
+        for spec in tools.TOOL_SPECS:
+            if spec.opt_in:
+                assert spec.group in tools.STRUCTURAL_GROUPS
 
     def test_every_tool_has_a_description(self):
         """Test the docstring that becomes the tool description is present."""
@@ -96,9 +108,9 @@ class TestResolveToolSpecs:
             "trestle_author_ssp_filter",
         ]
 
-    def test_all_selects_everything(self):
-        """Test 'all' selects the whole table."""
-        assert _names("all") == [spec.name for spec in tools.TOOL_SPECS]
+    def test_all_selects_every_selectable_tool(self):
+        """Test 'all' selects the whole table except the opt-in tools."""
+        assert _names("all") == _selectable_names()
 
     def test_individual_tool_name(self):
         """Test a single tool can be selected by its registered name."""
@@ -201,13 +213,11 @@ class TestBuildServer:
         assert len(self._registered(server)) == 13
         assert server.trestle_mcp_selector == "authoring"
 
-    def test_all_registers_every_tool(self):
-        """Test 'all' registers the whole table."""
+    def test_all_registers_every_selectable_tool(self):
+        """Test 'all' registers the whole table except the opt-in tools."""
         server = build_server("all")
-        assert self._registered(server) == [spec.name for spec in tools.TOOL_SPECS]
-        assert server.trestle_mcp_tool_names == tuple(
-            spec.name for spec in tools.TOOL_SPECS
-        )
+        assert self._registered(server) == _selectable_names()
+        assert server.trestle_mcp_tool_names == tuple(_selectable_names())
 
     def test_mixed_selection_registers_the_union(self):
         """Test a group plus an individual tool are both registered."""
@@ -255,3 +265,66 @@ class TestBuildServer:
         )
         with pytest.raises(TypeError, match="does not match"):
             register_tool(FastMCP("probe"), bad)
+
+
+class TestOptInTools:
+    """Test suite for tools that no group selects.
+
+    An opt-in tool must be unreachable through any group, `all` included, so
+    that a broad selection cannot hand an agent a tool that destroys content.
+    """
+
+    def test_there_is_at_least_one_opt_in_tool(self):
+        """Test the opt-in mechanism is actually exercised by the table."""
+        assert tools.OPT_IN_TOOL_NAMES
+
+    def test_remove_is_opt_in(self):
+        """Test trestle_remove is the destructive tool kept behind a name."""
+        assert "trestle_remove" in tools.OPT_IN_TOOL_NAMES
+        assert tools.TOOL_SPECS_BY_NAME["trestle_remove"].opt_in is True
+
+    def test_remove_is_annotated_destructive(self):
+        """Test the client is told what the tool does before it is called."""
+        annotations = tools.TOOL_SPECS_BY_NAME["trestle_remove"].annotations
+        assert annotations["destructiveHint"] is True
+        assert annotations["readOnlyHint"] is False
+
+    @pytest.mark.parametrize("group", tools.GROUP_NAMES)
+    def test_no_group_selects_an_opt_in_tool(self, group):
+        """Test every group, 'all' included, leaves the opt-in tools out."""
+        members = tools.group_members(group)
+        for name in tools.OPT_IN_TOOL_NAMES:
+            assert name not in members, f"{group} selects {name}"
+
+    @pytest.mark.parametrize("group", tools.GROUP_NAMES)
+    def test_no_group_registers_an_opt_in_tool(self, group):
+        """Test the same holds end to end, through a built server."""
+        server = build_server(group)
+        for name in tools.OPT_IN_TOOL_NAMES:
+            assert name not in server.trestle_mcp_tool_names
+
+    def test_default_selection_omits_opt_in_tools(self):
+        """Test an operator who configures nothing does not get them."""
+        assert "trestle_remove" not in _names(None)
+
+    def test_an_opt_in_tool_is_selected_by_its_exact_name(self):
+        """Test naming it is the one way in."""
+        assert _names("trestle_remove") == ["trestle_remove"]
+
+    def test_an_opt_in_tool_combines_with_a_group(self):
+        """Test the documented 'all,trestle_remove' form registers everything."""
+        names = _names("all,trestle_remove")
+        assert names == [spec.name for spec in tools.TOOL_SPECS]
+        assert "trestle_remove" in names
+
+    def test_opt_in_tools_are_listed_in_the_error_message(self):
+        """Test a bad selector still tells the reader the tool exists.
+
+        A tool no group selects is easy to miss, so the valid-names help has to
+        name it, and to say that only naming it works.
+        """
+        with pytest.raises(tools.ToolSelectionError) as error:
+            tools.resolve_tool_specs("nope")
+        message = str(error.value)
+        assert "trestle_remove" in message
+        assert "only by name" in message

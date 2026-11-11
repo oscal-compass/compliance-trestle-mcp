@@ -2,9 +2,11 @@
 
 Every tool an MCP server registers costs the caller context: the client loads
 each tool's name, input schema and description into the model's context window
-on every session. This server implements the whole trestle command surface but
-lets the caller choose how much of it to expose, so the common case stays cheap
-and the rest is one configuration value away.
+on every session. This server covers the trestle command surface an agent should
+drive -- see ``docs/command-specs-development.md`` for what is deliberately left
+out -- but lets the caller choose how much of it to expose, so a session carries
+the part it will actually call and the rest is one configuration value away.
+``scripts/tool_context_cost.py`` measures what each selection costs.
 
 The selection is a comma-separated list of group names and individual tool
 names, read from the ``--tools`` CLI flag or the ``TRESTLE_MCP_TOOLS``
@@ -17,7 +19,13 @@ Groups:
   rather than from a taxonomy invented here.
 * ``authoring`` is the one curated preset: the authoring lifecycle, and the
   default.
-* ``all`` is every tool.
+* ``all`` is every tool a group can select.
+
+A tool marked ``opt_in`` is selected by no group, ``all`` included, and is
+registered only when the selection names it exactly. That is reserved for tools
+whose effect cannot be undone from inside the workspace: ``trestle_remove``
+deletes part of a model in place, with no backup, so an agent should not be able
+to reach for it merely because the operator asked for a broad group.
 """
 
 from __future__ import annotations
@@ -77,6 +85,10 @@ class ToolSpec:
             description.
         annotations: MCP tool annotations (readOnlyHint and friends).
         presets: Additional groups this tool belongs to, e.g. ("authoring",).
+        opt_in: When true, no group selects this tool — not even GROUP_ALL — and
+            only a selection naming it exactly registers it. `group` and
+            `presets` still record where the tool belongs structurally, so it is
+            documented with its peers.
     """
 
     name: str
@@ -86,10 +98,14 @@ class ToolSpec:
     handler: Callable[[Any], Awaitable[str]]
     annotations: Mapping[str, bool]
     presets: tuple[str, ...] = ()
+    opt_in: bool = False
 
     @property
     def groups(self) -> frozenset[str]:
-        """Every group name that selects this tool, excluding GROUP_ALL."""
+        """The groups this tool belongs to structurally, excluding GROUP_ALL.
+
+        Membership here does not imply a group selects the tool: see `opt_in`.
+        """
         return frozenset((self.group, *self.presets))
 
 
@@ -148,6 +164,17 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         input_model=services.create.TrestleCreateInput,
         handler=services.create.trestle_create,
         annotations=_annotations(),
+    ),
+    # Opt-in: the inverse of trestle_create's element mode, but it deletes model
+    # content in place with no backup, so no group selects it — see `opt_in`.
+    ToolSpec(
+        name="trestle_remove",
+        title="Remove an Element from an OSCAL Model",
+        group="core",
+        input_model=services.remove.TrestleRemoveInput,
+        handler=services.remove.trestle_remove,
+        annotations=_annotations(destructive=True),
+        opt_in=True,
     ),
     ToolSpec(
         name="trestle_assemble",
@@ -358,11 +385,20 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
 TOOL_SPECS_BY_NAME = {spec.name: spec for spec in TOOL_SPECS}
 
 
+#: Tools no group selects; only a selection naming one exactly registers it.
+OPT_IN_TOOL_NAMES = tuple(spec.name for spec in TOOL_SPECS if spec.opt_in)
+
+
 def group_members(group: str) -> list[str]:
-    """Names of the tools a group selects, in registration order."""
+    """Names of the tools a group selects, in registration order.
+
+    Opt-in tools are never included, GROUP_ALL included: a group is a convenience
+    and must not quietly hand over a tool that deletes model content.
+    """
+    selectable = [spec for spec in TOOL_SPECS if not spec.opt_in]
     if group == GROUP_ALL:
-        return [spec.name for spec in TOOL_SPECS]
-    return [spec.name for spec in TOOL_SPECS if group in spec.groups]
+        return [spec.name for spec in selectable]
+    return [spec.name for spec in selectable if group in spec.groups]
 
 
 def _valid_names_message() -> str:
@@ -374,7 +410,12 @@ def _valid_names_message() -> str:
             f"  {group:<12} {GROUP_DESCRIPTIONS[group]} ({len(members)} tools)"
         )
     lines.append("Valid tool names:")
-    lines.extend(f"  {spec.name}" for spec in TOOL_SPECS)
+    lines.extend(
+        f"  {spec.name}" for spec in TOOL_SPECS if spec.name not in OPT_IN_TOOL_NAMES
+    )
+    if OPT_IN_TOOL_NAMES:
+        lines.append("Valid tool names, selectable only by name (no group, not 'all'):")
+        lines.extend(f"  {name}" for name in OPT_IN_TOOL_NAMES)
     return "\n".join(lines)
 
 

@@ -13,6 +13,7 @@ from trestle_mcp.services import (
     init,
     merge,
     partial_object_validate,
+    remove,
     replicate,
     split,
     task,

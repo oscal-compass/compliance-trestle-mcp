@@ -364,3 +364,56 @@ async def test_generic_task_tools(workspace):
         )
         assert "✅" in result
         assert (root / "csv_out" / "catalog.csv").exists()
+
+
+@pytest.mark.anyio
+async def test_remove_deletes_an_element_and_is_opt_in(workspace):
+    """Exercise trestle_remove against the real CLI, and its opt-in gating.
+
+    Two things need the real server rather than a mocked runner: that the
+    command actually removes the element from the file on disk, and that a
+    broad selection does not expose the tool at all.
+    """
+    root = workspace["root"]
+
+    # The tool is absent from the broadest group, so a client that asked for
+    # everything cannot call it.
+    async with Client(build_server("all")) as client:
+        listed = {tool.name for tool in await client.list_tools()}
+        assert "trestle_remove" not in listed
+
+    async with Client(build_server("all,trestle_remove")) as client:
+        assert "✅" in await call_tool(client, "trestle_init", {"mode": "local"})
+        assert "✅" in await call_tool(
+            client,
+            "trestle_import",
+            {"file": workspace["catalog"].as_posix(), "output": "source"},
+        )
+
+        catalog_path = root / "catalogs" / "source" / "catalog.json"
+        assert "roles" in json.loads(catalog_path.read_text())["catalog"]["metadata"]
+
+        result = await call_tool(
+            client,
+            "trestle_remove",
+            {
+                "file": "catalogs/source/catalog.json",
+                "element": "catalog.metadata.roles",
+            },
+        )
+        assert "✅" in result
+
+        # The element is gone from the file, and the rest of the model is intact.
+        metadata = json.loads(catalog_path.read_text())["catalog"]["metadata"]
+        assert "roles" not in metadata
+        assert metadata["title"]
+
+        # A path that is not in the model fails rather than removing something
+        # else, and says which element it could not find.
+        result = await call_tool(
+            client,
+            "trestle_remove",
+            {"file": "catalogs/source/catalog.json", "element": "catalog.nonexistent"},
+        )
+        assert "❌" in result
+        assert "catalog.nonexistent" in result

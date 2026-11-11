@@ -12,11 +12,12 @@ except PackageNotFoundError:
     # Running from a source checkout without an install (e.g. local dev).
     __version__ = "0.0.0+unknown"
 
-# Import main entry point
-from trestle_mcp.main import main, mcp
+# Import main entry point. Deliberately *not* `mcp`: that attribute builds a
+# server, so importing it here would make every `import trestle_mcp.anything`
+# read the tool selection out of the environment and possibly exit. Reach it as
+# `from trestle_mcp.main import mcp` when you want it.
+from trestle_mcp.main import main
 
 __all__ = [
-    # MCP server
-    "mcp",
     "main",
 ]

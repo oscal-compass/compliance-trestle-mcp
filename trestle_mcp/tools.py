@@ -31,9 +31,8 @@ to reach for it merely because the operator asked for a broad group.
 from __future__ import annotations
 
 import os
-import sys
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable, Iterable, Mapping, Optional
+from typing import Any, Awaitable, Callable, Mapping, Optional
 
 from pydantic import BaseModel
 
@@ -451,29 +450,27 @@ def resolve_tool_specs(selector: Optional[str]) -> list[ToolSpec]:
     return [spec for spec in TOOL_SPECS if spec.name in selected]
 
 
-def selector_from_sources(
-    argv: Optional[Iterable[str]] = None,
+def selector_from_environment(
     env: Optional[Mapping[str, str]] = None,
 ) -> Optional[str]:
-    """Read the selector from the command line, falling back to the environment.
+    """Read the selector from ``TRESTLE_MCP_TOOLS``.
 
-    The ``--tools`` flag wins over ``TRESTLE_MCP_TOOLS`` because an ``.mcp.json``
-    entry may carry either ``args`` or ``env``, and the more specific one should
-    be the one that takes effect.
+    The ``--tools`` flag is deliberately *not* read here. It used to be, by
+    scanning ``sys.argv`` for an exact match -- a second parser alongside the
+    argparse one in ``main``, and the two disagreed. argparse accepts prefix
+    abbreviations and keeps the last of a repeated flag, so ``--tool core``
+    parsed cleanly while this scan saw nothing and the server came up with the
+    default set, and ``--tools core --tools task`` registered ``core`` while
+    argparse held ``task``. That is exactly the "started up with a different
+    configuration than you asked for" failure the startup check exists to
+    prevent. The flag now reaches the selector only through the parsed
+    arguments, in ``main``, so there is one parser.
 
     Args:
-        argv: Argument list without the program name. Defaults to sys.argv[1:].
         env: Environment mapping. Defaults to os.environ.
 
     Returns:
-        The selector string, or None when neither source sets one.
+        The selector string, or None when the variable is unset.
     """
-    args = list(sys.argv[1:] if argv is None else argv)
-    for index, arg in enumerate(args):
-        if arg == FLAG_TOOLS and index + 1 < len(args):
-            return args[index + 1]
-        if arg.startswith(f"{FLAG_TOOLS}="):
-            return arg.split("=", 1)[1]
-
     environment = os.environ if env is None else env
     return environment.get(ENV_TOOLS)

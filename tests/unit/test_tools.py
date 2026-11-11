@@ -6,7 +6,7 @@ import asyncio
 import pytest
 
 from trestle_mcp import tools
-from trestle_mcp.main import build_server, register_tool
+from trestle_mcp.main import _build_arg_parser, build_server, register_tool
 
 
 def _names(selector):
@@ -161,43 +161,74 @@ class TestResolveToolSpecs:
             tools.resolve_tool_specs("authors")
 
 
-class TestSelectorFromSources:
-    """Test suite for selector_from_sources."""
+class TestSelectorFromEnvironment:
+    """Test suite for selector_from_environment."""
 
     def test_environment_variable_is_read(self):
-        """Test the env var supplies the selector when no flag is given."""
-        assert (
-            tools.selector_from_sources(argv=[], env={tools.ENV_TOOLS: "all"}) == "all"
-        )
+        """Test the env var supplies the selector."""
+        assert tools.selector_from_environment(env={tools.ENV_TOOLS: "all"}) == "all"
 
     def test_no_source_gives_none(self):
         """Test an unconfigured server reports no selector, so the default wins."""
-        assert tools.selector_from_sources(argv=[], env={}) is None
+        assert tools.selector_from_environment(env={}) is None
 
-    def test_flag_wins_over_environment_variable(self):
-        """Test --tools overrides TRESTLE_MCP_TOOLS."""
-        assert (
-            tools.selector_from_sources(
-                argv=["--tools", "core"], env={tools.ENV_TOOLS: "all"}
-            )
-            == "core"
-        )
+    def test_the_flag_is_not_read_here(self):
+        """Test the selector helper no longer parses the command line.
 
-    def test_flag_with_equals_form(self):
-        """Test --tools=VALUE is accepted as well as --tools VALUE."""
-        assert (
-            tools.selector_from_sources(argv=["--tools=task,core"], env={})
-            == "task,core"
-        )
+        It used to scan sys.argv, which made it a second parser disagreeing with
+        the argparse one in main. The flag now arrives only through the parsed
+        arguments -- see TestToolsFlagHasOneParser.
+        """
+        assert not hasattr(tools, "selector_from_sources")
 
-    def test_dangling_flag_falls_back_to_environment(self):
-        """Test a --tools with no value does not shadow the env var."""
-        assert (
-            tools.selector_from_sources(
-                argv=["--tools"], env={tools.ENV_TOOLS: "author"}
-            )
-            == "author"
-        )
+
+class TestToolsFlagHasOneParser:
+    """Test the --tools flag means the same thing to parsing and registration.
+
+    Two parsers used to read this flag: argparse in main, for validation and
+    --help, and an exact-match scan of sys.argv, for the value actually used.
+    argparse accepts prefix abbreviations and keeps the last of a repeated flag,
+    the scan did neither, so a selection could validate as one thing and be
+    applied as another -- the silent misconfiguration the startup check exists
+    to prevent.
+    """
+
+    def test_an_abbreviated_flag_is_rejected(self):
+        """Test `--tool core` is an error rather than a guess.
+
+        It used to parse cleanly as `--tools core` and then register the default
+        selection, because the scan found no exact `--tools`.
+        """
+        parser = _build_arg_parser()
+        with pytest.raises(SystemExit):
+            parser.parse_args(["--tool", "core"])
+
+    def test_a_repeated_flag_keeps_the_last_value(self):
+        """Test the parsed value is what main applies.
+
+        argparse has always kept the last; the scan took the first, so
+        `--tools core --tools task` validated `task` and registered `core`.
+        """
+        args = _build_arg_parser().parse_args(["--tools", "core", "--tools", "task"])
+        assert args.tools == "task"
+
+    def test_a_dangling_flag_is_rejected(self):
+        """Test `--tools` with no value is an error, not a fall-through.
+
+        The scan ignored a valueless flag and quietly used the environment.
+        """
+        parser = _build_arg_parser()
+        with pytest.raises(SystemExit):
+            parser.parse_args(["--tools"])
+
+    def test_the_equals_form_still_works(self):
+        """Test `--tools=VALUE` is accepted, as the README documents."""
+        args = _build_arg_parser().parse_args(["--tools=task,core"])
+        assert args.tools == "task,core"
+
+    def test_no_flag_leaves_the_environment_to_decide(self):
+        """Test an absent flag parses to None, which main reads as 'use the env'."""
+        assert _build_arg_parser().parse_args([]).tools is None
 
 
 class TestBuildServer:

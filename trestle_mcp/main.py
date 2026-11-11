@@ -25,7 +25,7 @@ from trestle_mcp.tools import (
     ToolSelectionError,
     ToolSpec,
     resolve_tool_specs,
-    selector_from_sources,
+    selector_from_environment,
 )
 
 SERVER_NAME = "trestle_mcp"
@@ -77,7 +77,7 @@ def build_server(selector: Optional[str] = None) -> FastMCP:
     Raises:
         ToolSelectionError: If the selector names something that does not exist.
     """
-    applied = selector if selector is not None else selector_from_sources()
+    applied = selector if selector is not None else selector_from_environment()
     specs = resolve_tool_specs(applied)
 
     server = FastMCP(SERVER_NAME)
@@ -99,6 +99,11 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=f"tool groups:\n{group_help}\n",
+        # No prefix abbreviations. `--tool core` reads as `--tools core` by
+        # default, which is a nice courtesy for a human at a prompt and a trap
+        # for a config file: the selection is the whole point of this flag, and
+        # a near miss should be rejected rather than guessed at.
+        allow_abbrev=False,
     )
     parser.add_argument(
         FLAG_TOOLS,
@@ -112,39 +117,62 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _build_default_server() -> FastMCP:
-    """Build the ambient server, reporting a bad selection and exiting.
+def _build_or_exit(selector: Optional[str]) -> FastMCP:
+    """Build a server, reporting a bad selection and exiting.
 
     A selector naming a tool that does not exist is a configuration mistake, and
     an MCP server that silently drops a requested tool is miserable to debug
-    from the client, where all you see is the tool missing. So this exits at
-    startup with the list of valid names rather than starting up short-handed.
+    from the client, where all you see is the tool missing. So this exits with
+    the list of valid names rather than starting up short-handed.
     """
     try:
-        return build_server()
+        return build_server(selector)
     except ToolSelectionError as error:
         print(f"trestle-mcp: {error}", file=sys.stderr)
         raise SystemExit(2) from error
 
 
-#: Server built from the ambient configuration, for callers that import `mcp`
-#: directly (tests, MCP inspectors, `fastmcp run`).
-mcp = _build_default_server()
+#: Cache behind the lazy `mcp` attribute below.
+_ambient_server: Optional[FastMCP] = None
+
+
+def __getattr__(name: str) -> FastMCP:
+    """Build the ambient `mcp` server on first access, not on import.
+
+    `mcp` exists for callers that want a server from the ambient configuration
+    without going through `main`: MCP inspectors, `fastmcp run`, a test. It used
+    to be a module-level assignment, which meant *importing anything in this
+    package* read the environment and could raise `SystemExit(2)` -- so
+    `TRESTLE_MCP_TOOLS` left exported for a client turned
+    `from trestle_mcp.services import ...`, or running
+    `scripts/tool_context_cost.py`, into an exit. Building it on demand keeps
+    that cost on the callers that actually want a server.
+    """
+    if name != "mcp":
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+    global _ambient_server
+    if _ambient_server is None:
+        _ambient_server = _build_or_exit(None)
+    return _ambient_server
 
 
 def main() -> None:
     """Main entry point for the trestle MCP server."""
-    # Parsed for validation and for --help; the selection itself was read by
-    # build_server, which looks at both the flag and the environment.
-    _build_arg_parser().parse_args()
+    # One parser. The selection comes from what argparse parsed, so the flag
+    # cannot mean one thing to the validation and another to the registration.
+    args = _build_arg_parser().parse_args()
+    selector = args.tools if args.tools is not None else selector_from_environment()
+
+    server = _build_or_exit(selector)
 
     # stderr, never stdout: the stdio transport owns stdout.
     print(
-        f"trestle-mcp: tools={mcp.trestle_mcp_selector} "
-        f"({len(mcp.trestle_mcp_tool_names)} registered)",
+        f"trestle-mcp: tools={server.trestle_mcp_selector} "
+        f"({len(server.trestle_mcp_tool_names)} registered)",
         file=sys.stderr,
     )
-    mcp.run()
+    server.run()
 
 
 if __name__ == "__main__":

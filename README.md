@@ -146,7 +146,8 @@ The selection is a comma-separated list of group names and/or individual tool
 names, read from the `--tools` flag or the `TRESTLE_MCP_TOOLS` environment
 variable. The flag wins over the environment variable. Naming something that
 does not exist fails at startup with the list of valid names, rather than
-starting up with the tool quietly missing.
+starting up with the tool quietly missing — and the flag has to be spelled in
+full, so a config file carrying `--tool` is rejected instead of guessed at.
 
 | Value | Tools | `tools/list` chars | Meaning |
 |---|---:|---:|---|

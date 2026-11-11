@@ -28,9 +28,14 @@ class TrestleHrefInput(BaseModel):
     )
     item: Optional[int] = Field(
         default=None,
+        # trestle only checks the upper bound (`n_imports <= import_num`), so a
+        # negative value is passed through to a Python list index: item=-1
+        # rewrites the *last* import, reporting success and naming no index.
+        # Nothing about that is what a caller counting from a listing meant.
+        ge=0,
         description=(
-            "Index of the import to modify, as shown by a listing run. "
-            "Defaults to 0, the first import."
+            "Index of the import to modify, as shown by a listing run, counting "
+            "from 0. Defaults to 0, the first import."
         ),
     )
     trestle_root: Optional[str] = Field(

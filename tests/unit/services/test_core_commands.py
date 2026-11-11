@@ -10,6 +10,7 @@ as an option when the CLI wants it positionally fails only at call time.
 from unittest.mock import patch
 
 import pytest
+from pydantic import ValidationError
 
 from trestle_mcp.services import (
     assemble,
@@ -285,6 +286,22 @@ class TestTrestleReplicate:
 
 class TestTrestleHref:
     """Test suite for trestle_href tool."""
+
+    def test_a_negative_item_is_rejected(self):
+        """Test item must be >= 0.
+
+        trestle only checks the upper bound, so item=-1 reached a Python list
+        index and silently rewrote the *last* import while reporting success.
+        A caller counting indexes off a listing never means that.
+        """
+        with pytest.raises(ValidationError):
+            href.TrestleHrefInput(
+                name="p", href="trestle://catalogs/c/catalog.json", item=-1
+            )
+
+    def test_the_first_import_is_still_addressable(self):
+        """Test the bound does not exclude index 0, the default."""
+        assert href.TrestleHrefInput(name="p", item=0).item == 0
 
     @pytest.mark.asyncio
     async def test_listing_mode_omits_href(self):

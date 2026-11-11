@@ -1,6 +1,6 @@
 # Trestle MCP
 
-MCP server to easily use [compliance-trestle](https://github.com/oscal-compass/compliance-trestle) (OSCAL tool) from Claude, Roo, or any MCP-compliant client.
+MCP server to easily use [compliance-trestle](https://github.com/oscal-compass/compliance-trestle) (OSCAL tool) from OpenCode, Claude, or any MCP-compliant client.
 
 mcp-name: io.github.oscal-compass/compliance-trestle-mcp
 
@@ -8,29 +8,36 @@ mcp-name: io.github.oscal-compass/compliance-trestle-mcp
 
 This project can be used in the following two ways:
 
-- **[Usage from Coding Agent (Roo Code)](#usage-from-roocode)**: Use Trestle-MCP from Roo Code via MCP.
+- **[Usage from a coding agent (OpenCode)](#usage-from-opencode)**: Use Trestle-MCP from OpenCode via MCP.
 - **[Usage from CLI (MCP Client)](#usage-from-cli-mcp-client)**: Invoke Trestle-MCP directly using an MCP CLI client.
 
 Choose the option that best fits your workflow.
 
-## Usage from RooCode
+## Usage from OpenCode
 
-1. Add the following JSON to `.roo/mcp.json` (Roo workspace):
-    
+1. Add the following to `opencode.json` in your workspace:
+
     ```json
     {
-        "mcpServers": {
+        "mcp": {
             "trestle": {
-                "command": "uvx",
-                "args": ["--from", "compliance-trestle-mcp", "trestle-mcp"]
+                "type": "local",
+                "command": ["uvx", "--from", "compliance-trestle-mcp==<version>", "trestle-mcp"],
+                "environment": { "TRESTLE_MCP_TOOLS": "all" },
+                "enabled": true
             }
         }
     }
     ```
 
-2. Open Roo, confirm `trestle` tools are listed in the MCP panel, and execute as needed.
+    Replace `<version>` with the release you want; drop `==<version>` to track the
+    latest. `TRESTLE_MCP_TOOLS` chooses how much of the command surface to expose —
+    `all` is every tool, and the default without it is the authoring lifecycle. See
+    [Choosing which tools are exposed](#choosing-which-tools-are-exposed).
 
-    https://github.com/user-attachments/assets/59215549-cad9-4101-baa4-ecba77ac3904
+2. Open OpenCode, confirm the `trestle` tools are listed, and execute as needed.
+
+    https://github.com/user-attachments/assets/86c0abce-7285-4539-a7ae-90bbc1d2a66c
 
 ---
 
@@ -208,6 +215,12 @@ and the generic task runner:**
     }
 }
 ```
+
+The examples above use the `mcpServers` shape most MCP clients take. OpenCode
+spells the same things differently — `mcp` rather than `mcpServers`, `command`
+as one array instead of a `command` plus `args`, and `environment` rather than
+`env` — so the "everything" selection looks like
+[the entry at the top of this README](#usage-from-opencode).
 
 Run `trestle-mcp --help` for the group list, and watch stderr on startup for the
 line reporting the selection and how many tools it registered.

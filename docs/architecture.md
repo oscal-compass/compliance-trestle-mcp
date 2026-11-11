@@ -9,7 +9,7 @@
 The coding agent workspace doubles as the `trestle_root` — the directory that compliance-trestle uses to store and manage OSCAL artifacts. This means the AI agent can read and edit OSCAL files (catalogs, profiles, component definitions, markdown control docs) directly alongside the MCP tools that operate on them.
 
 **Request flow:**
-1. The user asks the coding agent (Roo Code, Claude, etc.) to perform an OSCAL operation in natural language.
+1. The user asks the coding agent (OpenCode, Claude, etc.) to perform an OSCAL operation in natural language.
 2. The coding agent calls the appropriate MCP tool exposed by the Trestle MCP Server.
 3. The server translates the call into a `compliance-trestle` CLI command and runs it as a subprocess.
 4. The CLI reads from and writes to the `trestle_root/` directory inside the workspace.
@@ -20,7 +20,7 @@ The coding agent workspace doubles as the `trestle_root` — the directory that 
 graph TB
     subgraph Clients["MCP Clients"]
         C1[Claude Desktop]
-        C2[Roo Code]
+        C2[OpenCode]
         C3[Other MCP Clients]
     end
 

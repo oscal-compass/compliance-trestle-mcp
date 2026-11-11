@@ -181,7 +181,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         group="core",
         input_model=services.assemble.TrestleAssembleInput,
         handler=services.assemble.trestle_assemble,
-        annotations=_annotations(idempotent=True),
+        annotations=_annotations(destructive=True, idempotent=True),
     ),
     ToolSpec(
         name="trestle_split",
@@ -189,7 +189,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         group="core",
         input_model=services.split.TrestleSplitInput,
         handler=services.split.trestle_split,
-        annotations=_annotations(),
+        annotations=_annotations(destructive=True),
     ),
     ToolSpec(
         name="trestle_merge",
@@ -197,7 +197,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         group="core",
         input_model=services.merge.TrestleMergeInput,
         handler=services.merge.trestle_merge,
-        annotations=_annotations(),
+        annotations=_annotations(destructive=True),
     ),
     ToolSpec(
         name="trestle_describe",
@@ -221,7 +221,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         group="core",
         input_model=services.href.TrestleHrefInput,
         handler=services.href.trestle_href,
-        annotations=_annotations(),
+        annotations=_annotations(destructive=True),
     ),
     ToolSpec(
         name="trestle_partial_object_validate",
@@ -246,7 +246,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         group="author",
         input_model=services.author.catalog_generate.TrestleCatalogGenerateInput,
         handler=services.author.catalog_generate.trestle_catalog_generate,
-        annotations=_annotations(open_world=True),
+        annotations=_annotations(destructive=True, open_world=True),
         presets=_AUTHORING,
     ),
     ToolSpec(
@@ -255,7 +255,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         group="author",
         input_model=services.author.catalog_assemble.TrestleAuthorCatalogAssembleInput,
         handler=services.author.catalog_assemble.trestle_author_catalog_assemble,
-        annotations=_annotations(open_world=True),
+        annotations=_annotations(destructive=True, open_world=True),
         presets=_AUTHORING,
     ),
     ToolSpec(
@@ -264,7 +264,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         group="author",
         input_model=services.author.profile_generate.TrestleAuthorProfileGenerateInput,
         handler=services.author.profile_generate.trestle_author_profile_generate,
-        annotations=_annotations(open_world=True),
+        annotations=_annotations(destructive=True, open_world=True),
         presets=_AUTHORING,
     ),
     ToolSpec(
@@ -273,7 +273,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         group="author",
         input_model=services.author.profile_assemble.TrestleAuthorProfileAssembleInput,
         handler=services.author.profile_assemble.trestle_author_profile_assemble,
-        annotations=_annotations(open_world=True),
+        annotations=_annotations(destructive=True, open_world=True),
         presets=_AUTHORING,
     ),
     ToolSpec(
@@ -282,7 +282,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         group="author",
         input_model=services.author.profile_resolve.TrestleAuthorProfileResolveInput,
         handler=services.author.profile_resolve.trestle_author_profile_resolve,
-        annotations=_annotations(open_world=True),
+        annotations=_annotations(destructive=True, open_world=True),
         presets=_AUTHORING,
     ),
     ToolSpec(
@@ -291,7 +291,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         group="author",
         input_model=services.author.profile_inherit.TrestleAuthorProfileInheritInput,
         handler=services.author.profile_inherit.trestle_author_profile_inherit,
-        annotations=_annotations(),
+        annotations=_annotations(destructive=True),
     ),
     ToolSpec(
         name="trestle_author_component_generate",
@@ -299,7 +299,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         group="author",
         input_model=services.author.component_generate.TrestleAuthorComponentGenerateInput,
         handler=services.author.component_generate.trestle_author_component_generate,
-        annotations=_annotations(open_world=True),
+        annotations=_annotations(destructive=True, open_world=True),
         presets=_AUTHORING,
     ),
     ToolSpec(
@@ -308,7 +308,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         group="author",
         input_model=services.author.component_assemble.TrestleAuthorComponentAssembleInput,
         handler=services.author.component_assemble.trestle_author_component_assemble,
-        annotations=_annotations(open_world=True),
+        annotations=_annotations(destructive=True, open_world=True),
         presets=_AUTHORING,
     ),
     ToolSpec(
@@ -317,7 +317,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         group="author",
         input_model=services.author.ssp_generate.TrestleAuthorSspGenerateInput,
         handler=services.author.ssp_generate.trestle_author_ssp_generate,
-        annotations=_annotations(open_world=True),
+        annotations=_annotations(destructive=True, open_world=True),
     ),
     ToolSpec(
         name="trestle_author_ssp_assemble",
@@ -325,7 +325,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         group="author",
         input_model=services.author.ssp_assemble.TrestleAuthorSspAssembleInput,
         handler=services.author.ssp_assemble.trestle_author_ssp_assemble,
-        annotations=_annotations(open_world=True),
+        annotations=_annotations(destructive=True, open_world=True),
     ),
     ToolSpec(
         name="trestle_author_ssp_filter",
@@ -333,7 +333,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         group="author",
         input_model=services.author.ssp_filter.TrestleAuthorSspFilterInput,
         handler=services.author.ssp_filter.trestle_author_ssp_filter,
-        annotations=_annotations(idempotent=True),
+        annotations=_annotations(destructive=True, idempotent=True),
     ),
     # ---- task: trestle task wrappers ---------------------------------------
     ToolSpec(
@@ -342,7 +342,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         group="task",
         input_model=services.task.csv_to_oscal_cd.TrestleTaskCsvToOscalCdInput,
         handler=services.task.csv_to_oscal_cd.trestle_task_csv_to_oscal_cd,
-        annotations=_annotations(),
+        annotations=_annotations(destructive=True),
         presets=_AUTHORING,
     ),
     ToolSpec(
@@ -351,7 +351,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         group="task",
         input_model=services.task.csv_to_oscal_mc.TrestleTaskCsvToOscalMcInput,
         handler=services.task.csv_to_oscal_mc.trestle_task_csv_to_oscal_mc,
-        annotations=_annotations(),
+        annotations=_annotations(destructive=True),
         presets=_AUTHORING,
     ),
     ToolSpec(
@@ -360,7 +360,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         group="task",
         input_model=services.task.xlsx_to_oscal_poam.TrestleTaskXlsxToOscalPoamInput,
         handler=services.task.xlsx_to_oscal_poam.trestle_task_xlsx_to_oscal_poam,
-        annotations=_annotations(),
+        annotations=_annotations(destructive=True),
         presets=_AUTHORING,
     ),
     ToolSpec(
@@ -377,7 +377,7 @@ TOOL_SPECS: tuple[ToolSpec, ...] = (
         group="task",
         input_model=services.task.task_run.TrestleTaskRunInput,
         handler=services.task.task_run.trestle_task_run,
-        annotations=_annotations(),
+        annotations=_annotations(destructive=True),
     ),
 )
 

@@ -235,7 +235,15 @@ for its group. Registration order follows the table.
   fails. Better a `TypeError` at launch than a wrong schema at call time.
 - **`annotations`** are the MCP hints. Set `read_only=True` for a command that
   only reads, `idempotent=True` when running it twice is the same as once, and
-  `destructive=True` when it removes content.
+  `destructive=True` when a successful run can leave the workspace without
+  something that was in it before — which per the MCP spec is anything that is
+  not a purely *additive* update, so overwriting counts, not just deleting. A
+  client may auto-approve tools that say they are not destructive, so the
+  default of `False` is the permissive answer and has to be earned: check it by
+  running the command twice against the real CLI and seeing whether the second
+  run refuses or overwrites. Every tool is classified, with its reason, in
+  [`tests/unit/test_annotations.py`](../../tests/unit/test_annotations.py);
+  a new tool fails there until it is listed.
 - **`presets=_AUTHORING`** puts the tool in the default selection. See below.
 - **`opt_in=True`** takes it out of every group, `all` included.
 

@@ -243,7 +243,7 @@ Tools marked **(default)** are in the `authoring` preset.
 - `trestle_replicate`: Copy a top-level model to a new name, optionally with fresh uuids
 - `trestle_href`: List or repoint the import hrefs of a profile
 - `trestle_partial_object_validate`: Validate a single OSCAL object held in a file
-- `trestle_version`: Report the trestle and OSCAL versions, or a model's OSCAL version
+- `trestle_version`: Report the trestle and OSCAL versions, or a model's own document version (`metadata.version`, not its OSCAL version)
 
 ### `author` — `trestle author` subcommands
 

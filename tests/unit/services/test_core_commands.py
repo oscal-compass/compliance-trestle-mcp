@@ -382,7 +382,7 @@ class TestTrestleVersion:
 
     @pytest.mark.asyncio
     async def test_model_version(self):
-        """Test querying a single model's OSCAL version."""
+        """Test querying a single model's document version."""
         with patch("trestle_mcp.services.version.run_trestle_command") as mock_run:
             mock_run.return_value = SUCCESS
             params = version.TrestleVersionInput(name="mycat", model_type="catalog")
@@ -391,6 +391,45 @@ class TestTrestleVersion:
             args = mock_run.call_args[0][0]
             assert args[args.index("--name") + 1] == "mycat"
             assert args[args.index("--type") + 1] == "catalog"
+
+    @pytest.mark.asyncio
+    async def test_a_model_version_is_labelled_as_the_document_version(self):
+        """Test the result says which version it is.
+
+        trestle prints "Version of OSCAL object of <name> <type> is: X", where X
+        is metadata.version. Passed through as-is, an agent asked "what OSCAL
+        version is this catalog?" answers with the document's version instead --
+        5.2.0 for a catalog whose oscal-version is 1.1.3.
+        """
+        with patch("trestle_mcp.services.version.run_trestle_command") as mock_run:
+            mock_run.return_value = {
+                "success": True,
+                "stdout": "Version of OSCAL object of mycat catalog is: 5.2.0.",
+                "stderr": "",
+                "returncode": 0,
+            }
+            params = version.TrestleVersionInput(name="mycat", model_type="catalog")
+            result = await version.trestle_version(params)
+            assert "metadata.version" in result
+            assert "not its OSCAL version" in result
+            assert "metadata.oscal-version" in result
+
+    @pytest.mark.asyncio
+    async def test_the_bare_version_is_not_relabelled(self):
+        """Test the note is only added where it applies.
+
+        With no model named, the output really is the trestle and OSCAL
+        versions, so the caveat would be wrong.
+        """
+        with patch("trestle_mcp.services.version.run_trestle_command") as mock_run:
+            mock_run.return_value = {
+                "success": True,
+                "stdout": "Trestle version v5.2.0 based on OSCAL version 1.1.3",
+                "stderr": "",
+                "returncode": 0,
+            }
+            result = await version.trestle_version(version.TrestleVersionInput())
+            assert "metadata.version" not in result
 
     @pytest.mark.asyncio
     async def test_version_failure(self):

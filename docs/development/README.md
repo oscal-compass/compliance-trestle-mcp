@@ -127,6 +127,16 @@ async def trestle_split(params: TrestleSplitInput) -> str:
 Then import the module in the matching `services/__init__.py` — modules only,
 by full package path, one level down.
 
+**Pass `--trestle-root` whenever the command takes it.** It is not only a flag
+for trestle: `run_trestle_command` makes the value absolute and runs the
+subprocess *in* that directory. That is what lets a caller pass a relative
+`file` or `output_dir` and have it mean a path inside the workspace. The
+process's own working directory is wherever the MCP client launched the server,
+which is almost never the workspace, so a service that omits the flag resolves
+every relative path argument somewhere the caller never named. Only
+`trestle merge` passes an explicit `cwd`, because it resolves its destination
+model from the working directory rather than from the root.
+
 ### 3. The docstring is the tool description
 
 FastMCP ships the handler's docstring to the client as the tool's description,

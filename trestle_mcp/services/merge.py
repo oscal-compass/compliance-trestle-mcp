@@ -3,6 +3,7 @@
 This module implements merging split subcomponents back into a trestle model.
 """
 
+import os
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -29,7 +30,7 @@ class TrestleMergeInput(BaseModel):
             "Directory of the model being merged, e.g. 'catalogs/mycat'. "
             "trestle merge resolves the destination model relative to the "
             "working directory, so this must be the directory that holds the "
-            "model file."
+            "model file. A relative path is taken from `trestle_root`."
         ),
     )
     trestle_root: Optional[str] = Field(
@@ -76,7 +77,15 @@ async def trestle_merge(params: TrestleMergeInput) -> str:
     if params.verbose:
         args.append("--verbose")
 
-    result = run_trestle_command(args, cwd=params.model_dir)
+    # merge is the one command that needs its own working directory: it
+    # resolves the destination model from there, not from --trestle-root. So the
+    # root cannot do the resolving here the way it does for every other command
+    # -- the relative model_dir has to be joined onto it explicitly.
+    model_dir = params.model_dir
+    if params.trestle_root and not os.path.isabs(model_dir):
+        model_dir = os.path.join(params.trestle_root, model_dir)
+
+    result = run_trestle_command(args, cwd=model_dir)
 
     if result["success"]:
         output = result["stdout"].strip()

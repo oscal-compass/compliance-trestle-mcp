@@ -39,6 +39,43 @@ def find_trestle_bin() -> str:
     return "trestle"
 
 
+#: The flag every service passes to point trestle at the workspace. Named here
+#: because the working directory is derived from it, not just handed to trestle.
+FLAG_TRESTLE_ROOT = "--trestle-root"
+
+
+def absolute_trestle_root(args: list[str]) -> tuple[list[str], Optional[str]]:
+    """Make a `--trestle-root` argument absolute and report the path.
+
+    trestle resolves `--trestle-root` itself, but every *other* path argument --
+    `--file`, `--output-dir`, a task's `input-file` -- is resolved by the OS
+    against the process's working directory. For an MCP server that directory is
+    wherever the client happened to launch it, which is almost never the
+    workspace, so a relative path from the caller pointed at nothing. Returning
+    the root lets the command run inside the workspace, which is what makes a
+    relative argument mean what the caller meant.
+
+    The path has to be made absolute because the command then runs *in* it: a
+    relative `--trestle-root ws` left alone would resolve to `ws/ws`.
+
+    Args:
+        args: Command arguments, without the 'trestle' prefix.
+
+    Returns:
+        The arguments with any `--trestle-root` value made absolute, and that
+        absolute path, or None when the arguments do not set a root.
+    """
+    joined = f"{FLAG_TRESTLE_ROOT}="
+    for index, arg in enumerate(args):
+        if arg == FLAG_TRESTLE_ROOT and index + 1 < len(args):
+            root = os.path.abspath(args[index + 1])
+            return args[: index + 1] + [root] + args[index + 2 :], root
+        if arg.startswith(joined):
+            root = os.path.abspath(arg[len(joined) :])
+            return args[:index] + [joined + root] + args[index + 1 :], root
+    return list(args), None
+
+
 def run_trestle_command(
     args: list[str],
     cwd: Optional[str] = None,
@@ -46,9 +83,17 @@ def run_trestle_command(
 ) -> dict:
     """Run a trestle CLI command and return the result.
 
+    The command runs in `cwd` if the caller names one, otherwise in the
+    `--trestle-root` the arguments carry, otherwise in this process's working
+    directory. Deriving it from the root is what keeps a relative path argument
+    relative to the workspace rather than to wherever the client started the
+    server -- see `absolute_trestle_root`. Only `trestle merge` needs an
+    explicit `cwd`, because it resolves its destination model from the working
+    directory.
+
     Args:
         args: List of command arguments (without 'trestle' prefix)
-        cwd: Working directory for the command
+        cwd: Working directory for the command. Overrides the trestle root.
         timeout: Seconds to wait before giving up. Defaults to DEFAULT_TIMEOUT;
             pass LONG_TIMEOUT for commands that fetch remote content or walk a
             whole catalog.
@@ -56,12 +101,17 @@ def run_trestle_command(
     Returns:
         dict with 'success', 'stdout', 'stderr', 'returncode'
     """
+    args, trestle_root = absolute_trestle_root(args)
     trestle_bin = find_trestle_bin()
     cmd = [trestle_bin] + args
 
     try:
         result = subprocess.run(
-            cmd, cwd=cwd or os.getcwd(), capture_output=True, text=True, timeout=timeout
+            cmd,
+            cwd=cwd or trestle_root or os.getcwd(),
+            capture_output=True,
+            text=True,
+            timeout=timeout,
         )
 
         return {

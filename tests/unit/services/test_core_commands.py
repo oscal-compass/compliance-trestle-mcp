@@ -160,12 +160,14 @@ class TestTrestleMerge:
     """Test suite for trestle_merge tool."""
 
     @pytest.mark.asyncio
-    async def test_merge_runs_in_the_model_directory(self):
-        """Test merge is run with cwd set to model_dir.
+    async def test_merge_runs_in_the_model_directory_under_the_root(self):
+        """Test a relative model_dir is resolved against trestle_root.
 
         trestle merge resolves the destination model relative to its working
-        directory and uses --trestle-root only for model type lookup, so passing
-        a trestle root alone does not work.
+        directory and uses --trestle-root only for model type lookup, so merge
+        needs its own cwd. That cwd has to be the model directory *inside the
+        workspace*: passing the bare relative path would resolve it against
+        whatever directory the client started this server in.
         """
         with patch("trestle_mcp.services.merge.run_trestle_command") as mock_run:
             mock_run.return_value = SUCCESS
@@ -179,6 +181,30 @@ class TestTrestleMerge:
             args = mock_run.call_args[0][0]
             assert args[0] == "merge"
             assert args[args.index("--element") + 1] == "catalog.metadata"
+            assert mock_run.call_args[1]["cwd"] == "/ws/catalogs/mycat"
+
+    @pytest.mark.asyncio
+    async def test_merge_keeps_an_absolute_model_dir(self):
+        """Test an absolute model_dir is used as given, root or no root."""
+        with patch("trestle_mcp.services.merge.run_trestle_command") as mock_run:
+            mock_run.return_value = SUCCESS
+            params = merge.TrestleMergeInput(
+                element="catalog.metadata",
+                model_dir="/elsewhere/catalogs/mycat",
+                trestle_root="/ws",
+            )
+            await merge.trestle_merge(params)
+            assert mock_run.call_args[1]["cwd"] == "/elsewhere/catalogs/mycat"
+
+    @pytest.mark.asyncio
+    async def test_merge_without_a_root_uses_the_model_dir_as_given(self):
+        """Test the no-root case is unchanged: cwd is the model_dir itself."""
+        with patch("trestle_mcp.services.merge.run_trestle_command") as mock_run:
+            mock_run.return_value = SUCCESS
+            params = merge.TrestleMergeInput(
+                element="catalog.metadata", model_dir="catalogs/mycat"
+            )
+            await merge.trestle_merge(params)
             assert mock_run.call_args[1]["cwd"] == "catalogs/mycat"
 
     @pytest.mark.asyncio

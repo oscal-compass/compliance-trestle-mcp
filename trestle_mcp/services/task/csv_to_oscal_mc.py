@@ -83,9 +83,10 @@ async def trestle_task_csv_to_oscal_mc(params: TrestleTaskCsvToOscalMcInput) -> 
       "Percentage value out of range" warning and the map entry is written
       without it; write 0.8.
 
-    Resource paths in the CSV are resolved relative to the working directory of
-    the trestle process, not to `trestle_root`. Use absolute paths for the
-    catalog files to avoid depending on where the server happens to be running.
+    Resource paths in the CSV are resolved relative to the trestle process's
+    working directory, which is `trestle_root` when you pass one and wherever
+    the server was started when you do not. Pass `trestle_root`, or use absolute
+    paths, so the CSV does not depend on how the server was launched.
 
     Args:
         params (TrestleTaskCsvToOscalMcInput): Input parameters with:

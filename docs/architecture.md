@@ -77,12 +77,18 @@ registered is decided by `--tools` or `TRESTLE_MCP_TOOLS` — see
 and [what each selection costs](development/tool-context-cost.md).
 
 All subprocess execution is centralized in `libs/trestle.py`, which locates the
-`trestle` binary and applies a timeout: `DEFAULT_TIMEOUT` (60s) for commands that
-only touch local models, and `LONG_TIMEOUT` (600s) for those that fetch remote
-content or walk a whole catalog. Seven services pass the longer one: `import`,
-`author profile-resolve`, `author ssp-generate`, and the four `task` tools that
-run a task (`csv-to-oscal-cd`, `csv-to-oscal-mc`, `xlsx-to-oscal-poam`,
-`task_run`). `task_list` only reads help text, so it keeps the default.
+`trestle` binary, runs it in the workspace named by `--trestle-root` so that a
+relative path argument is relative to the workspace rather than to wherever the
+client launched the server, waits for it on a worker thread so a slow command
+does not stop the event loop, and applies a timeout: `DEFAULT_TIMEOUT` (60s) for
+commands that only touch local models, and `LONG_TIMEOUT` (600s) for those that
+fetch remote content, resolve a profile or walk a whole catalog. Twelve services
+pass the longer one — `import`, the four `author` commands that resolve a
+profile (`profile-resolve`, `profile-inherit`, `component-generate`,
+`component-assemble`), the three SSP commands (`ssp-generate`, `ssp-assemble`,
+`ssp-filter`) and the four `task` tools that run a task. `task_list` only reads
+help text, so it keeps the default. Which tools these are is pinned by
+`tests/unit/test_timeouts.py`.
 
 One tool does not shell out at all: `trestle_validate` validates a standalone
 OSCAL file in-process through `libs/oscal_validate.py`, so it works outside a

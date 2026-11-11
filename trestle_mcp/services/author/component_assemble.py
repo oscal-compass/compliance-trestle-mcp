@@ -8,7 +8,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from trestle_mcp.libs.trestle import run_trestle_command
+from trestle_mcp.libs.trestle import LONG_TIMEOUT, run_trestle_command
 
 
 class TrestleAuthorComponentAssembleInput(BaseModel):
@@ -102,7 +102,9 @@ async def trestle_author_component_assemble(
     if params.verbose:
         args.append("--verbose")
 
-    result = await run_trestle_command(args)
+    # Assembling re-resolves the profile behind each rule, for the same reason
+    # and at the same cost as component-generate.
+    result = await run_trestle_command(args, timeout=LONG_TIMEOUT)
 
     if result["success"]:
         output = result["stdout"].strip()

@@ -8,7 +8,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from trestle_mcp.libs.trestle import run_trestle_command
+from trestle_mcp.libs.trestle import LONG_TIMEOUT, run_trestle_command
 
 
 class TrestleAuthorSspAssembleInput(BaseModel):
@@ -95,7 +95,10 @@ async def trestle_author_ssp_assemble(params: TrestleAuthorSspAssembleInput) -> 
     if params.verbose:
         args.append("--verbose")
 
-    result = await run_trestle_command(args)
+    # Assembling an SSP loads the generated markdown for every control in the
+    # baseline the SSP was generated from, so it scales with that baseline the
+    # way ssp-generate does.
+    result = await run_trestle_command(args, timeout=LONG_TIMEOUT)
 
     if result["success"]:
         output = result["stdout"].strip()

@@ -8,7 +8,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from trestle_mcp.libs.trestle import run_trestle_command
+from trestle_mcp.libs.trestle import LONG_TIMEOUT, run_trestle_command
 
 
 class TrestleAuthorSspFilterInput(BaseModel):
@@ -119,7 +119,9 @@ async def trestle_author_ssp_filter(params: TrestleAuthorSspFilterInput) -> str:
     if params.verbose:
         args.append("--verbose")
 
-    result = await run_trestle_command(args)
+    # With --profile, filtering resolves that profile to decide which controls
+    # survive, so it costs what profile-resolve costs.
+    result = await run_trestle_command(args, timeout=LONG_TIMEOUT)
 
     if result["success"]:
         output = result["stdout"].strip()

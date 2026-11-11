@@ -8,7 +8,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from trestle_mcp.libs.trestle import run_trestle_command
+from trestle_mcp.libs.trestle import LONG_TIMEOUT, run_trestle_command
 
 
 class TrestleAuthorComponentGenerateInput(BaseModel):
@@ -82,7 +82,12 @@ async def trestle_author_component_generate(
     if params.verbose:
         args.append("--verbose")
 
-    result = await run_trestle_command(args)
+    # The component definition names a profile in each rule's Profile_Source,
+    # and generating the markdown resolves it. That is the same walk as
+    # profile-resolve, over a profile this server did not choose -- a
+    # Profile_Source pointing at NIST SP 800-53 rev5 is ~10 MB fetched and
+    # every control resolved.
+    result = await run_trestle_command(args, timeout=LONG_TIMEOUT)
 
     if result["success"]:
         output = result["stdout"].strip()

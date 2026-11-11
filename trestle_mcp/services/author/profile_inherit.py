@@ -8,7 +8,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from trestle_mcp.libs.trestle import run_trestle_command
+from trestle_mcp.libs.trestle import LONG_TIMEOUT, run_trestle_command
 
 
 class TrestleAuthorProfileInheritInput(BaseModel):
@@ -81,7 +81,9 @@ async def trestle_author_profile_inherit(
     if params.verbose:
         args.append("--verbose")
 
-    result = await run_trestle_command(args)
+    # Deriving a profile resolves both the parent profile and the leveraged
+    # SSP's own profile, so this is profile resolution twice over.
+    result = await run_trestle_command(args, timeout=LONG_TIMEOUT)
 
     if result["success"]:
         output = result["stdout"].strip()

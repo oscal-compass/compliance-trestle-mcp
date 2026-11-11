@@ -177,9 +177,15 @@ subprocess on a worker thread, so a slow command does not stop the event loop
 and with it every other tool call, ping and cancellation on the server.
 
 **Timeouts.** `run_trestle_command` applies `DEFAULT_TIMEOUT` (60s). Pass
-`timeout=LONG_TIMEOUT` (600s) for commands that fetch remote content or walk a
-whole catalog — `import`, `author profile-resolve`, `author ssp-generate` and
-the four `task` tools that run a task do.
+`timeout=LONG_TIMEOUT` (600s) for commands that fetch remote content, resolve a
+profile or walk a whole catalog. Twelve tools do, and the list lives in
+`SLOW_TOOLS` in [`tests/unit/test_timeouts.py`](../../tests/unit/test_timeouts.py)
+with a reason against each — a tool that needs the long timeout and does not
+take it fails there, and so does one that takes it without being listed. Judge
+it by what trestle ends up doing, not by the command's name: `ssp-generate` had
+the long timeout while `component-generate`, `component-assemble`,
+`ssp-assemble`, `ssp-filter` and `profile-inherit` did not, though they resolve
+the same profiles over the same catalogs.
 
 **Tasks take an INI file.** Every `trestle task` is driven by a
 `[task.<name>]` section. Build the values as a dict and hand it to
